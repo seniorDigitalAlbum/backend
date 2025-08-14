@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DearMind 카메라 API 테스트</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .section h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .camera-preview {
+            width: 100%;
+            max-width: 400px;
+            height: 300px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin: 20px 0;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-active {
+            background-color: #28a745;
+        }
+        .status-inactive {
+            background-color: #dc3545;
+        }
+        .status-recording {
+            background-color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📹 DearMind 카메라 API 테스트</h1>
+        
+        <!-- 서비스 상태 확인 -->
+        <div class="section">
+            <h2>🔍 서비스 상태 확인</h2>
+            <button onclick="checkHealth()">서비스 상태 확인</button>
+            <div id="healthResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 카메라 세션 생성 -->
+        <div class="section">
+            <h2>🎬 카메라 세션 생성</h2>
+            <div class="form-group">
+                <label for="userId">사용자 ID:</label>
+                <input type="text" id="userId" value="test_user_123" placeholder="사용자 ID를 입력하세요">
+            </div>
+            <div class="form-group">
+                <label for="questionId">질문 ID:</label>
+                <input type="number" id="questionId" value="1" placeholder="질문 ID를 입력하세요">
+            </div>
+            <button onclick="createSession()">카메라 세션 생성</button>
+            <div id="createResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 세션 정보 조회 -->
+        <div class="section">
+            <h2>📋 세션 정보 조회</h2>
+            <div class="form-group">
+                <label for="sessionId">세션 ID:</label>
+                <input type="text" id="sessionId" placeholder="세션 ID를 입력하세요">
+            </div>
+            <button onclick="getSession()">세션 정보 조회</button>
+            <div id="getResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 세션 상태 업데이트 -->
+        <div class="section">
+            <h2>⚙️ 세션 상태 업데이트</h2>
+            <div class="form-group">
+                <label for="updateSessionId">세션 ID:</label>
+                <input type="text" id="updateSessionId" placeholder="세션 ID를 입력하세요">
+            </div>
+            <div class="form-group">
+                <label for="status">새로운 상태:</label>
+                <select id="status">
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="RECORDING">RECORDING</option>
+                    <option value="INACTIVE">INACTIVE</option>
+                </select>
+            </div>
+            <button onclick="updateSessionStatus()">상태 업데이트</button>
+            <div id="updateResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 사용자 세션 목록 -->
+        <div class="section">
+            <h2>👤 사용자 세션 목록</h2>
+            <div class="form-group">
+                <label for="listUserId">사용자 ID:</label>
+                <input type="text" id="listUserId" value="test_user_123" placeholder="사용자 ID를 입력하세요">
+            </div>
+            <button onclick="getUserSessions()">세션 목록 조회</button>
+            <div id="listResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 세션 종료 -->
+        <div class="section">
+            <h2>🛑 세션 종료</h2>
+            <div class="form-group">
+                <label for="deleteSessionId">세션 ID:</label>
+                <input type="text" id="deleteSessionId" placeholder="세션 ID를 입력하세요">
+            </div>
+            <button onclick="endSession()">세션 종료</button>
+            <div id="deleteResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 카메라 프리뷰 -->
+        <div class="section">
+            <h2>📷 카메라 프리뷰</h2>
+            <div class="camera-preview" id="cameraPreview">
+                카메라가 활성화되지 않았습니다
+            </div>
+            <button onclick="startCamera()">카메라 시작</button>
+            <button onclick="stopCamera()">카메라 중지</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api/camera';
+        let currentSessionId = null;
+        let stream = null;
+
+        // 서비스 상태 확인
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                showResponse('healthResponse', data, response.ok);
+            } catch (error) {
+                showResponse('healthResponse', { error: error.message }, false);
+            }
+        }
+
+        // 카메라 세션 생성
+        async function createSession() {
+            const userId = document.getElementById('userId').value;
+            const questionId = document.getElementById('questionId').value;
+            
+            if (!userId || !questionId) {
+                alert('사용자 ID와 질문 ID를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/session?userId=${userId}&questionId=${questionId}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                showResponse('createResponse', data, response.ok);
+                
+                if (response.ok && data.session) {
+                    currentSessionId = data.session.sessionId;
+                    document.getElementById('sessionId').value = currentSessionId;
+                    document.getElementById('updateSessionId').value = currentSessionId;
+                    document.getElementById('deleteSessionId').value = currentSessionId;
+                }
+            } catch (error) {
+                showResponse('createResponse', { error: error.message }, false);
+            }
+        }
+
+        // 세션 정보 조회
+        async function getSession() {
+            const sessionId = document.getElementById('sessionId').value;
+            if (!sessionId) {
+                alert('세션 ID를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/session/${sessionId}`);
+                const data = await response.json();
+                showResponse('getResponse', data, response.ok);
+            } catch (error) {
+                showResponse('getResponse', { error: error.message }, false);
+            }
+        }
+
+        // 세션 상태 업데이트
+        async function updateSessionStatus() {
+            const sessionId = document.getElementById('updateSessionId').value;
+            const status = document.getElementById('status').value;
+            
+            if (!sessionId) {
+                alert('세션 ID를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/session/${sessionId}/status?status=${status}`, {
+                    method: 'PUT'
+                });
+                const data = await response.json();
+                showResponse('updateResponse', data, response.ok);
+            } catch (error) {
+                showResponse('updateResponse', { error: error.message }, false);
+            }
+        }
+
+        // 사용자 세션 목록 조회
+        async function getUserSessions() {
+            const userId = document.getElementById('listUserId').value;
+            if (!userId) {
+                alert('사용자 ID를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/user/${userId}`);
+                const data = await response.json();
+                showResponse('listResponse', data, response.ok);
+            } catch (error) {
+                showResponse('listResponse', { error: error.message }, false);
+            }
+        }
+
+        // 세션 종료
+        async function endSession() {
+            const sessionId = document.getElementById('deleteSessionId').value;
+            if (!sessionId) {
+                alert('세션 ID를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/session/${sessionId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                showResponse('deleteResponse', data, response.ok);
+                
+                if (response.ok) {
+                    currentSessionId = null;
+                    stopCamera();
+                }
+            } catch (error) {
+                showResponse('deleteResponse', { error: error.message }, false);
+            }
+        }
+
+        // 카메라 시작
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: true, 
+                    audio: false 
+                });
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.autoplay = true;
+                video.style.width = '100%';
+                video.style.height = '100%';
+                video.style.objectFit = 'cover';
+                
+                const preview = document.getElementById('cameraPreview');
+                preview.innerHTML = '';
+                preview.appendChild(video);
+                
+                showResponse('updateResponse', { 
+                    status: 'success', 
+                    message: '카메라가 시작되었습니다.' 
+                }, true);
+            } catch (error) {
+                showResponse('updateResponse', { 
+                    error: '카메라 접근 실패: ' + error.message 
+                }, false);
+            }
+        }
+
+        // 카메라 중지
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            const preview = document.getElementById('cameraPreview');
+            preview.innerHTML = '카메라가 중지되었습니다';
+            
+            showResponse('updateResponse', { 
+                status: 'success', 
+                message: '카메라가 중지되었습니다.' 
+            }, true);
+        }
+
+        // 응답 표시
+        function showResponse(elementId, data, isSuccess) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `response ${isSuccess ? 'success' : 'error'}`;
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+
+        // 페이지 로드 시 서비스 상태 확인
+        window.onload = function() {
+            checkHealth();
+        };
+    </script>
+</body>
+</html> 

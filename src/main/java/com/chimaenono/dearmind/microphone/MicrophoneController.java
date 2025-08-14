@@ -45,8 +45,6 @@ public class MicrophoneController {
     public ResponseEntity<Map<String, Object>> createSession(
         @Parameter(description = "사용자 ID", example = "user_123")
         @RequestParam String userId,
-        @Parameter(description = "선택된 질문 ID", example = "1")
-        @RequestParam Long questionId,
         @Parameter(description = "오디오 포맷", example = "WAV")
         @RequestParam(required = false) String audioFormat,
         @Parameter(description = "샘플 레이트", example = "44100")
@@ -54,7 +52,7 @@ public class MicrophoneController {
     ) {
         Map<String, Object> response = new HashMap<>();
         try {
-            MicrophoneSession session = microphoneService.createSession(userId, questionId, audioFormat, sampleRate);
+            MicrophoneSession session = microphoneService.createSession(userId, audioFormat, sampleRate);
             response.put("status", "success");
             response.put("session", session);
             response.put("message", "마이크 세션이 생성되었습니다.");

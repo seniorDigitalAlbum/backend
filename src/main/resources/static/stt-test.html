@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DearMind STT 테스트</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .section h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .audio-controls {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .record-button {
+            background-color: #dc3545;
+        }
+        .record-button:hover {
+            background-color: #c82333;
+        }
+        .stop-button {
+            background-color: #6c757d;
+        }
+        .stop-button:hover {
+            background-color: #5a6268;
+        }
+        .transcribe-button {
+            background-color: #28a745;
+        }
+        .transcribe-button:hover {
+            background-color: #218838;
+        }
+        .recording-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 1s infinite;
+        }
+        .recording-active {
+            background-color: #dc3545;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .transcription-result {
+            background-color: #e9ecef;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #28a745;
+        }
+        .status-dot.error {
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 DearMind STT 테스트</h1>
+        
+        <!-- 서비스 상태 확인 -->
+        <div class="section">
+            <h2>🔍 서비스 상태 확인</h2>
+            <button onclick="checkHealth()">서비스 상태 확인</button>
+            <div id="healthResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 실시간 STT 테스트 -->
+        <div class="section">
+            <h2>🎤 실시간 STT 테스트</h2>
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-dot" id="micStatus"></div>
+                    <span>마이크 상태</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" id="apiStatus"></div>
+                    <span>API 상태</span>
+                </div>
+                <div class="status-item">
+                    <span id="recordingTime">00:00</span>
+                </div>
+            </div>
+            
+            <div class="audio-controls">
+                <button onclick="startRecording()" class="record-button" id="startBtn">녹음 시작</button>
+                <button onclick="stopRecording()" class="stop-button" id="stopBtn" disabled>녹음 중지</button>
+                <button onclick="transcribeAudio()" class="transcribe-button" id="transcribeBtn" disabled>텍스트 변환</button>
+            </div>
+            
+            <div id="recordingStatus" style="display: none;">
+                <span class="recording-indicator recording-active"></span>
+                녹음 중... 말씀해주세요!
+            </div>
+            
+            <div class="form-group">
+                <label for="transcriptionResult">변환된 텍스트:</label>
+                <div class="transcription-result" id="transcriptionResult">
+                    여기에 변환된 텍스트가 표시됩니다.
+                </div>
+            </div>
+            
+            <div id="sttResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 파일 업로드 STT 테스트 -->
+        <div class="section">
+            <h2>📁 파일 업로드 STT 테스트</h2>
+            <div class="form-group">
+                <label for="audioFile">오디오 파일 선택:</label>
+                <input type="file" id="audioFile" accept="audio/*">
+            </div>
+            <div class="form-group">
+                <label for="language">언어:</label>
+                <select id="language">
+                    <option value="ko">한국어</option>
+                    <option value="en">영어</option>
+                    <option value="ja">일본어</option>
+                    <option value="zh">중국어</option>
+                </select>
+            </div>
+            <button onclick="transcribeFile()" class="transcribe-button">파일 변환</button>
+            <div id="fileResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 수동 입력 STT 테스트 -->
+        <div class="section">
+            <h2>✏️ 수동 입력 STT 테스트</h2>
+            <div class="form-group">
+                <label for="audioData">Base64 오디오 데이터:</label>
+                <textarea id="audioData" placeholder="Base64로 인코딩된 오디오 데이터를 입력하세요..."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="format">오디오 형식:</label>
+                <select id="format">
+                    <option value="wav">WAV</option>
+                    <option value="mp3">MP3</option>
+                    <option value="m4a">M4A</option>
+                </select>
+            </div>
+            <button onclick="transcribeManual()" class="transcribe-button">수동 변환</button>
+            <div id="manualResponse" class="response" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api/stt';
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordingStartTime = null;
+        let recordingTimer = null;
+
+        // 서비스 상태 확인
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                showResponse('healthResponse', data, response.ok);
+                updateApiStatus(response.ok);
+            } catch (error) {
+                showResponse('healthResponse', { error: error.message }, false);
+                updateApiStatus(false);
+            }
+        }
+
+        // 마이크 상태 업데이트
+        function updateMicStatus(isActive) {
+            const statusDot = document.getElementById('micStatus');
+            statusDot.className = `status-dot ${isActive ? '' : 'error'}`;
+        }
+
+        // API 상태 업데이트
+        function updateApiStatus(isActive) {
+            const statusDot = document.getElementById('apiStatus');
+            statusDot.className = `status-dot ${isActive ? '' : 'error'}`;
+        }
+
+        // 녹음 시작
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: true,
+                    video: false
+                });
+                
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+                
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    convertBlobToBase64(audioBlob);
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                recordingStartTime = Date.now();
+                
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('transcribeBtn').disabled = true;
+                document.getElementById('recordingStatus').style.display = 'block';
+                
+                updateMicStatus(true);
+                startRecordingTimer();
+                
+                showResponse('sttResponse', { 
+                    status: 'success', 
+                    message: '녹음이 시작되었습니다.' 
+                }, true);
+                
+            } catch (error) {
+                showResponse('sttResponse', { 
+                    error: '마이크 접근 실패: ' + error.message 
+                }, false);
+                updateMicStatus(false);
+            }
+        }
+
+        // 녹음 중지
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('transcribeBtn').disabled = false;
+                document.getElementById('recordingStatus').style.display = 'none';
+                
+                stopRecordingTimer();
+                
+                showResponse('sttResponse', { 
+                    status: 'success', 
+                    message: '녹음이 중지되었습니다.' 
+                }, true);
+            }
+        }
+
+        // 녹음 타이머 시작
+        function startRecordingTimer() {
+            recordingTimer = setInterval(() => {
+                const elapsed = Date.now() - recordingStartTime;
+                const minutes = Math.floor(elapsed / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                document.getElementById('recordingTime').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        // 녹음 타이머 중지
+        function stopRecordingTimer() {
+            if (recordingTimer) {
+                clearInterval(recordingTimer);
+                recordingTimer = null;
+            }
+        }
+
+        // Blob을 Base64로 변환
+        function convertBlobToBase64(blob) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64Data = reader.result.split(',')[1];
+                window.recordedAudioData = base64Data;
+            };
+            reader.readAsDataURL(blob);
+        }
+
+        // 오디오를 텍스트로 변환
+        async function transcribeAudio() {
+            if (!window.recordedAudioData) {
+                alert('먼저 오디오를 녹음해주세요.');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('audioData', window.recordedAudioData);
+                
+                const response = await fetch(`${API_BASE_URL}/realtime`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                showResponse('sttResponse', data, response.ok);
+                
+                if (response.ok && data.text) {
+                    document.getElementById('transcriptionResult').textContent = data.text;
+                }
+            } catch (error) {
+                showResponse('sttResponse', { error: error.message }, false);
+            }
+        }
+
+        // 파일 업로드 STT
+        async function transcribeFile() {
+            const fileInput = document.getElementById('audioFile');
+            const language = document.getElementById('language').value;
+            
+            if (!fileInput.files[0]) {
+                alert('오디오 파일을 선택해주세요.');
+                return;
+            }
+
+            try {
+                const file = fileInput.files[0];
+                const base64Data = await fileToBase64(file);
+                
+                const request = {
+                    audioData: base64Data,
+                    format: file.name.split('.').pop(),
+                    language: language,
+                    model: 'whisper-1'
+                };
+
+                const response = await fetch(`${API_BASE_URL}/transcribe`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(request)
+                });
+                
+                const data = await response.json();
+                showResponse('fileResponse', data, response.ok);
+                
+                if (response.ok && data.text) {
+                    document.getElementById('transcriptionResult').textContent = data.text;
+                }
+            } catch (error) {
+                showResponse('fileResponse', { error: error.message }, false);
+            }
+        }
+
+        // 수동 입력 STT
+        async function transcribeManual() {
+            const audioData = document.getElementById('audioData').value;
+            const format = document.getElementById('format').value;
+            
+            if (!audioData) {
+                alert('Base64 오디오 데이터를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const request = {
+                    audioData: audioData,
+                    format: format,
+                    language: 'ko',
+                    model: 'whisper-1'
+                };
+
+                const response = await fetch(`${API_BASE_URL}/transcribe`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(request)
+                });
+                
+                const data = await response.json();
+                showResponse('manualResponse', data, response.ok);
+                
+                if (response.ok && data.text) {
+                    document.getElementById('transcriptionResult').textContent = data.text;
+                }
+            } catch (error) {
+                showResponse('manualResponse', { error: error.message }, false);
+            }
+        }
+
+        // 파일을 Base64로 변환
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 응답 표시
+        function showResponse(elementId, data, isSuccess) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `response ${isSuccess ? 'success' : 'error'}`;
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+
+        // 페이지 로드 시 서비스 상태 확인
+        window.onload = function() {
+            checkHealth();
+        };
+    </script>
+</body>
+</html> 

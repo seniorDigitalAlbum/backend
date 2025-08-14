@@ -29,9 +29,7 @@ public class MicrophoneSession {
     @Schema(description = "사용자 ID", example = "user_123")
     private String userId;
     
-    @Column(name = "question_id")
-    @Schema(description = "선택된 질문 ID", example = "1")
-    private Long questionId;
+
     
     @Column(name = "status")
     @Schema(description = "마이크 상태", example = "ACTIVE")

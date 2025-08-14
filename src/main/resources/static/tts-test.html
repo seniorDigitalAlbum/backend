@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DearMind TTS 테스트</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.error {
+            background: #dc3545;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid #e9ecef;
+        }
+
+        .section h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .synthesize-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .synthesize-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .synthesize-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .health-button {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .health-button:hover {
+            transform: translateY(-1px);
+        }
+
+        .audio-player {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+        }
+
+        .audio-player audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .response.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .response.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .voice-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .voice-option {
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .voice-option:hover {
+            border-color: #4facfe;
+            background: #f8f9fa;
+        }
+
+        .voice-option.selected {
+            border-color: #4facfe;
+            background: #e3f2fd;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎤 DearMind TTS 테스트</h1>
+            <p>Naver CLOVA Voice API를 사용한 Text-to-Speech 변환 테스트</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <span>🔊 TTS API:</span>
+                <div class="status-dot" id="ttsStatus"></div>
+                <span id="ttsStatusText">확인 중...</span>
+            </div>
+            <button onclick="checkHealth()" class="health-button">상태 확인</button>
+        </div>
+
+        <div class="content">
+            <!-- 기본 TTS 테스트 -->
+            <div class="section">
+                <h2>🎵 기본 TTS 테스트</h2>
+                <div class="form-group">
+                    <label for="simpleText">변환할 텍스트:</label>
+                    <textarea id="simpleText" placeholder="음성으로 변환할 텍스트를 입력하세요...">안녕하세요! 오늘 날씨가 정말 좋네요.</textarea>
+                </div>
+                <button onclick="synthesizeSimple()" class="synthesize-button">음성 변환</button>
+                <div id="simpleResponse" class="response" style="display: none;"></div>
+            </div>
+
+            <!-- 고급 TTS 테스트 -->
+            <div class="section">
+                <h2>🎛️ 고급 TTS 테스트</h2>
+                <div class="form-group">
+                    <label for="advancedText">변환할 텍스트:</label>
+                    <textarea id="advancedText" placeholder="음성으로 변환할 텍스트를 입력하세요...">안녕하세요! 저는 AI 어시스턴트입니다. 무엇을 도와드릴까요?</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>음성 타입:</label>
+                    <div class="voice-options">
+                        <div class="voice-option selected" data-voice="nara">나라 (여성)</div>
+                        <div class="voice-option" data-voice="nwoo">우진 (남성)</div>
+                        <div class="voice-option" data-voice="dara">다라 (여성)</div>
+                        <div class="voice-option" data-voice="bora">보라 (여성)</div>
+                        <div class="voice-option" data-voice="vhyeri">혜리 (여성)</div>
+                        <div class="voice-option" data-voice="csy">채송이 (여성)</div>
+                        <div class="voice-option" data-voice="nsy">신영 (여성)</div>
+                        <div class="voice-option" data-voice="nhs">한상 (남성)</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label for="speed">속도:</label>
+                        <select id="speed">
+                            <option value="0.5">느리게 (0.5x)</option>
+                            <option value="0.75">조금 느리게 (0.75x)</option>
+                            <option value="1.0" selected>보통 (1.0x)</option>
+                            <option value="1.25">조금 빠르게 (1.25x)</option>
+                            <option value="1.5">빠르게 (1.5x)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="pitch">톤:</label>
+                        <select id="pitch">
+                            <option value="-5.0">매우 낮게</option>
+                            <option value="-2.0">낮게</option>
+                            <option value="0.0" selected>보통</option>
+                            <option value="2.0">높게</option>
+                            <option value="5.0">매우 높게</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label for="volume">볼륨:</label>
+                        <select id="volume">
+                            <option value="-5.0">매우 작게</option>
+                            <option value="-2.0">작게</option>
+                            <option value="0.0" selected>보통</option>
+                            <option value="2.0">크게</option>
+                            <option value="5.0">매우 크게</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="format">포맷:</label>
+                        <select id="format">
+                            <option value="mp3" selected>MP3</option>
+                            <option value="wav">WAV</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button onclick="synthesizeAdvanced()" class="synthesize-button">고급 음성 변환</button>
+                <div id="advancedResponse" class="response" style="display: none;"></div>
+            </div>
+
+            <!-- 음성 재생 영역 -->
+            <div class="section">
+                <h2>🔊 음성 재생</h2>
+                <div class="audio-player" id="audioPlayer" style="display: none;">
+                    <h3>생성된 음성:</h3>
+                    <audio id="audioElement" controls>
+                        브라우저가 오디오 재생을 지원하지 않습니다.
+                    </audio>
+                    <div style="margin-top: 15px;">
+                        <button onclick="downloadAudio()" class="synthesize-button">음성 파일 다운로드</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api/tts';
+        let currentAudioData = null;
+        let currentFormat = 'mp3';
+
+        // 페이지 로드 시 상태 확인
+        window.onload = function() {
+            checkHealth();
+            setupVoiceOptions();
+        };
+
+        // 서비스 상태 확인
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                showResponse('healthResponse', data, response.ok);
+                updateTTSStatus(response.ok);
+            } catch (error) {
+                showResponse('healthResponse', { error: error.message }, false);
+                updateTTSStatus(false);
+            }
+        }
+
+        // TTS 상태 업데이트
+        function updateTTSStatus(isActive) {
+            const statusDot = document.getElementById('ttsStatus');
+            const statusText = document.getElementById('ttsStatusText');
+            statusDot.className = `status-dot ${isActive ? '' : 'error'}`;
+            statusText.textContent = isActive ? '정상' : '오류';
+        }
+
+        // 음성 옵션 설정
+        function setupVoiceOptions() {
+            const voiceOptions = document.querySelectorAll('.voice-option');
+            voiceOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    voiceOptions.forEach(opt => opt.classList.remove('selected'));
+                    this.classList.add('selected');
+                });
+            });
+        }
+
+        // 기본 TTS 변환
+        async function synthesizeSimple() {
+            const text = document.getElementById('simpleText').value.trim();
+            if (!text) {
+                alert('변환할 텍스트를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/simple?text=${encodeURIComponent(text)}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                showResponse('simpleResponse', data, response.ok);
+                
+                if (response.ok && data.audioData) {
+                    playAudio(data.audioData, data.format);
+                }
+            } catch (error) {
+                showResponse('simpleResponse', { error: error.message }, false);
+            }
+        }
+
+        // 고급 TTS 변환
+        async function synthesizeAdvanced() {
+            const text = document.getElementById('advancedText').value.trim();
+            if (!text) {
+                alert('변환할 텍스트를 입력해주세요.');
+                return;
+            }
+
+            const selectedVoice = document.querySelector('.voice-option.selected').dataset.voice;
+            const speed = document.getElementById('speed').value;
+            const pitch = document.getElementById('pitch').value;
+            const volume = document.getElementById('volume').value;
+            const format = document.getElementById('format').value;
+
+            try {
+                const request = {
+                    text: text,
+                    voice: selectedVoice,
+                    speed: speed,
+                    pitch: pitch,
+                    volume: volume,
+                    format: format
+                };
+
+                const response = await fetch(`${API_BASE_URL}/synthesize`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(request)
+                });
+                
+                const data = await response.json();
+                showResponse('advancedResponse', data, response.ok);
+                
+                if (response.ok && data.audioData) {
+                    playAudio(data.audioData, data.format);
+                }
+            } catch (error) {
+                showResponse('advancedResponse', { error: error.message }, false);
+            }
+        }
+
+        // 오디오 재생
+        function playAudio(audioData, format) {
+            currentAudioData = audioData;
+            currentFormat = format;
+            
+            const audioBlob = base64ToBlob(audioData, `audio/${format}`);
+            const audioUrl = URL.createObjectURL(audioBlob);
+            
+            const audioElement = document.getElementById('audioElement');
+            audioElement.src = audioUrl;
+            audioElement.load();
+            
+            document.getElementById('audioPlayer').style.display = 'block';
+        }
+
+        // Base64를 Blob으로 변환
+        function base64ToBlob(base64, mimeType) {
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray], { type: mimeType });
+        }
+
+        // 오디오 파일 다운로드
+        function downloadAudio() {
+            if (!currentAudioData) {
+                alert('다운로드할 오디오가 없습니다.');
+                return;
+            }
+
+            const audioBlob = base64ToBlob(currentAudioData, `audio/${currentFormat}`);
+            const url = URL.createObjectURL(audioBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tts_audio.${currentFormat}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // 응답 표시
+        function showResponse(elementId, data, isSuccess) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `response ${isSuccess ? 'success' : 'error'}`;
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+    </script>
+</body>
+</html> 

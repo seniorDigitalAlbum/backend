@@ -44,13 +44,11 @@ public class CameraController {
     })
     public ResponseEntity<Map<String, Object>> createSession(
         @Parameter(description = "사용자 ID", example = "user_123")
-        @RequestParam String userId,
-        @Parameter(description = "선택된 질문 ID", example = "1")
-        @RequestParam Long questionId
+        @RequestParam String userId
     ) {
         Map<String, Object> response = new HashMap<>();
         try {
-            CameraSession session = cameraService.createSession(userId, questionId);
+            CameraSession session = cameraService.createSession(userId);
             response.put("status", "success");
             response.put("session", session);
             response.put("message", "카메라 세션이 생성되었습니다.");

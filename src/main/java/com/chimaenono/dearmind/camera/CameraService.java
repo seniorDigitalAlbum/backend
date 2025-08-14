@@ -18,11 +18,10 @@ public class CameraService {
     private CameraSessionRepository cameraSessionRepository;
 
     @Operation(summary = "카메라 세션 생성", description = "새로운 카메라 세션을 생성합니다")
-    public CameraSession createSession(String userId, Long questionId) {
+    public CameraSession createSession(String userId) {
         CameraSession session = new CameraSession();
         session.setSessionId(UUID.randomUUID().toString());
         session.setUserId(userId);
-        session.setQuestionId(questionId);
         session.setStatus("ACTIVE");
         return cameraSessionRepository.save(session);
     }

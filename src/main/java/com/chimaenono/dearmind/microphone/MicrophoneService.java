@@ -18,11 +18,10 @@ public class MicrophoneService {
     private MicrophoneSessionRepository microphoneSessionRepository;
 
     @Operation(summary = "마이크 세션 생성", description = "새로운 마이크 세션을 생성합니다")
-    public MicrophoneSession createSession(String userId, Long questionId, String audioFormat, Integer sampleRate) {
+    public MicrophoneSession createSession(String userId, String audioFormat, Integer sampleRate) {
         MicrophoneSession session = new MicrophoneSession();
         session.setSessionId(UUID.randomUUID().toString());
         session.setUserId(userId);
-        session.setQuestionId(questionId);
         session.setStatus("ACTIVE");
         session.setAudioFormat(audioFormat != null ? audioFormat : "WAV");
         session.setSampleRate(sampleRate != null ? sampleRate : 44100);

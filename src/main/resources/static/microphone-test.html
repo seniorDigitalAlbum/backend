@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DearMind 마이크 API 테스트</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .section h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .audio-visualizer {
+            width: 100%;
+            max-width: 400px;
+            height: 200px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin: 20px 0;
+            position: relative;
+        }
+        .audio-level {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 12px;
+        }
+        .recording-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 1s infinite;
+        }
+        .recording-active {
+            background-color: #dc3545;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .audio-controls {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .record-button {
+            background-color: #dc3545;
+        }
+        .record-button:hover {
+            background-color: #c82333;
+        }
+        .stop-button {
+            background-color: #6c757d;
+        }
+        .stop-button:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 DearMind 마이크 API 테스트</h1>
+        
+        <!-- 서비스 상태 확인 -->
+        <div class="section">
+            <h2>🔍 서비스 상태 확인</h2>
+            <button onclick="checkHealth()">서비스 상태 확인</button>
+            <div id="healthResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 마이크 세션 생성 -->
+        <div class="section">
+            <h2>🎬 마이크 세션 생성</h2>
+            <div class="form-group">
+                <label for="userId">사용자 ID:</label>
+                <input type="text" id="userId" value="test_user_123" placeholder="사용자 ID를 입력하세요">
+            </div>
+            <div class="form-group">
+                <label for="questionId">질문 ID:</label>
+                <input type="number" id="questionId" value="1" placeholder="질문 ID를 입력하세요">
+            </div>
+            <div class="form-group">
+                <label for="audioFormat">오디오 포맷:</label>
+                <select id="audioFormat">
+                    <option value="WAV">WAV</option>
+                    <option value="MP3">MP3</option>
+                    <option value="AAC">AAC</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="sampleRate">샘플 레이트:</label>
+                <select id="sampleRate">
+                    <option value="44100">44100 Hz</option>
+                    <option value="48000">48000 Hz</option>
+                    <option value="16000">16000 Hz</option>
+                </select>
+            </div>
+            <button onclick="createSession()">마이크 세션 생성</button>
+            <div id="createResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 세션 정보 조회 -->
+        <div class="section">
+            <h2>📋 세션 정보 조회</h2>
+            <div class="form-group">
+                <label for="sessionId">세션 ID:</label>
+                <input type="text" id="sessionId" placeholder="세션 ID를 입력하세요">
+            </div>
+            <button onclick="getSession()">세션 정보 조회</button>
+            <div id="getResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 세션 상태 업데이트 -->
+        <div class="section">
+            <h2>⚙️ 세션 상태 업데이트</h2>
+            <div class="form-group">
+                <label for="updateSessionId">세션 ID:</label>
+                <input type="text" id="updateSessionId" placeholder="세션 ID를 입력하세요">
+            </div>
+            <div class="form-group">
+                <label for="status">새로운 상태:</label>
+                <select id="status">
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="RECORDING">RECORDING</option>
+                    <option value="INACTIVE">INACTIVE</option>
+                </select>
+            </div>
+            <button onclick="updateSessionStatus()">상태 업데이트</button>
+            <div id="updateResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 오디오 설정 업데이트 -->
+        <div class="section">
+            <h2>🎛️ 오디오 설정 업데이트</h2>
+            <div class="form-group">
+                <label for="settingsSessionId">세션 ID:</label>
+                <input type="text" id="settingsSessionId" placeholder="세션 ID를 입력하세요">
+            </div>
+            <div class="form-group">
+                <label for="newAudioFormat">새 오디오 포맷:</label>
+                <select id="newAudioFormat">
+                    <option value="WAV">WAV</option>
+                    <option value="MP3">MP3</option>
+                    <option value="AAC">AAC</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="newSampleRate">새 샘플 레이트:</label>
+                <select id="newSampleRate">
+                    <option value="44100">44100 Hz</option>
+                    <option value="48000">48000 Hz</option>
+                    <option value="16000">16000 Hz</option>
+                </select>
+            </div>
+            <button onclick="updateAudioSettings()">설정 업데이트</button>
+            <div id="settingsResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 사용자 세션 목록 -->
+        <div class="section">
+            <h2>👤 사용자 세션 목록</h2>
+            <div class="form-group">
+                <label for="listUserId">사용자 ID:</label>
+                <input type="text" id="listUserId" value="test_user_123" placeholder="사용자 ID를 입력하세요">
+            </div>
+            <button onclick="getUserSessions()">세션 목록 조회</button>
+            <div id="listResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 세션 종료 -->
+        <div class="section">
+            <h2>🛑 세션 종료</h2>
+            <div class="form-group">
+                <label for="deleteSessionId">세션 ID:</label>
+                <input type="text" id="deleteSessionId" placeholder="세션 ID를 입력하세요">
+            </div>
+            <button onclick="endSession()">세션 종료</button>
+            <div id="deleteResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- 마이크 프리뷰 -->
+        <div class="section">
+            <h2>🎤 마이크 프리뷰</h2>
+            <div class="audio-visualizer" id="audioVisualizer">
+                마이크가 활성화되지 않았습니다
+                <div class="audio-level" id="audioLevel" style="display: none;">볼륨: 0%</div>
+            </div>
+            <div class="audio-controls">
+                <button onclick="startMicrophone()" class="record-button">마이크 시작</button>
+                <button onclick="stopMicrophone()" class="stop-button">마이크 중지</button>
+                <button onclick="startRecording()" class="record-button">녹음 시작</button>
+                <button onclick="stopRecording()" class="stop-button">녹음 중지</button>
+            </div>
+            <div id="recordingStatus" style="display: none;">
+                <span class="recording-indicator recording-active"></span>
+                녹음 중...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api/microphone';
+        let currentSessionId = null;
+        let stream = null;
+        let mediaRecorder = null;
+        let audioContext = null;
+        let analyser = null;
+        let isRecording = false;
+
+        // 서비스 상태 확인
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                showResponse('healthResponse', data, response.ok);
+            } catch (error) {
+                showResponse('healthResponse', { error: error.message }, false);
+            }
+        }
+
+        // 마이크 세션 생성
+        async function createSession() {
+            const userId = document.getElementById('userId').value;
+            const questionId = document.getElementById('questionId').value;
+            const audioFormat = document.getElementById('audioFormat').value;
+            const sampleRate = parseInt(document.getElementById('sampleRate').value);
+            
+            if (!userId || !questionId) {
+                alert('사용자 ID와 질문 ID를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/session?userId=${userId}&questionId=${questionId}&audioFormat=${audioFormat}&sampleRate=${sampleRate}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                showResponse('createResponse', data, response.ok);
+                
+                if (response.ok && data.session) {
+                    currentSessionId = data.session.sessionId;
+                    document.getElementById('sessionId').value = currentSessionId;
+                    document.getElementById('updateSessionId').value = currentSessionId;
+                    document.getElementById('settingsSessionId').value = currentSessionId;
+                    document.getElementById('deleteSessionId').value = currentSessionId;
+                }
+            } catch (error) {
+                showResponse('createResponse', { error: error.message }, false);
+            }
+        }
+
+        // 세션 정보 조회
+        async function getSession() {
+            const sessionId = document.getElementById('sessionId').value;
+            if (!sessionId) {
+                alert('세션 ID를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/session/${sessionId}`);
+                const data = await response.json();
+                showResponse('getResponse', data, response.ok);
+            } catch (error) {
+                showResponse('getResponse', { error: error.message }, false);
+            }
+        }
+
+        // 세션 상태 업데이트
+        async function updateSessionStatus() {
+            const sessionId = document.getElementById('updateSessionId').value;
+            const status = document.getElementById('status').value;
+            
+            if (!sessionId) {
+                alert('세션 ID를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/session/${sessionId}/status?status=${status}`, {
+                    method: 'PUT'
+                });
+                const data = await response.json();
+                showResponse('updateResponse', data, response.ok);
+            } catch (error) {
+                showResponse('updateResponse', { error: error.message }, false);
+            }
+        }
+
+        // 오디오 설정 업데이트
+        async function updateAudioSettings() {
+            const sessionId = document.getElementById('settingsSessionId').value;
+            const audioFormat = document.getElementById('newAudioFormat').value;
+            const sampleRate = parseInt(document.getElementById('newSampleRate').value);
+            
+            if (!sessionId) {
+                alert('세션 ID를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/session/${sessionId}/settings?audioFormat=${audioFormat}&sampleRate=${sampleRate}`, {
+                    method: 'PUT'
+                });
+                const data = await response.json();
+                showResponse('settingsResponse', data, response.ok);
+            } catch (error) {
+                showResponse('settingsResponse', { error: error.message }, false);
+            }
+        }
+
+        // 사용자 세션 목록 조회
+        async function getUserSessions() {
+            const userId = document.getElementById('listUserId').value;
+            if (!userId) {
+                alert('사용자 ID를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/user/${userId}`);
+                const data = await response.json();
+                showResponse('listResponse', data, response.ok);
+            } catch (error) {
+                showResponse('listResponse', { error: error.message }, false);
+            }
+        }
+
+        // 세션 종료
+        async function endSession() {
+            const sessionId = document.getElementById('deleteSessionId').value;
+            if (!sessionId) {
+                alert('세션 ID를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/session/${sessionId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                showResponse('deleteResponse', data, response.ok);
+                
+                if (response.ok) {
+                    currentSessionId = null;
+                    stopMicrophone();
+                }
+            } catch (error) {
+                showResponse('deleteResponse', { error: error.message }, false);
+            }
+        }
+
+        // 마이크 시작
+        async function startMicrophone() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: true,
+                    video: false
+                });
+                
+                // 오디오 컨텍스트 생성
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                source.connect(analyser);
+                
+                // 오디오 레벨 모니터링
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                const updateAudioLevel = () => {
+                    if (analyser) {
+                        analyser.getByteFrequencyData(dataArray);
+                        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+                        const level = Math.round((average / 255) * 100);
+                        
+                        const audioLevel = document.getElementById('audioLevel');
+                        audioLevel.textContent = `볼륨: ${level}%`;
+                        audioLevel.style.display = 'block';
+                        
+                        // 시각적 피드백
+                        const visualizer = document.getElementById('audioVisualizer');
+                        visualizer.style.backgroundColor = `rgb(${level * 2.55}, ${255 - level * 2.55}, 0)`;
+                        
+                        if (stream) {
+                            requestAnimationFrame(updateAudioLevel);
+                        }
+                    }
+                };
+                updateAudioLevel();
+                
+                showResponse('updateResponse', { 
+                    status: 'success', 
+                    message: '마이크가 시작되었습니다.' 
+                }, true);
+            } catch (error) {
+                showResponse('updateResponse', { 
+                    error: '마이크 접근 실패: ' + error.message 
+                }, false);
+            }
+        }
+
+        // 마이크 중지
+        function stopMicrophone() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            analyser = null;
+            
+            const visualizer = document.getElementById('audioVisualizer');
+            visualizer.innerHTML = '마이크가 중지되었습니다';
+            visualizer.style.backgroundColor = '#000';
+            
+            const audioLevel = document.getElementById('audioLevel');
+            audioLevel.style.display = 'none';
+            
+            showResponse('updateResponse', { 
+                status: 'success', 
+                message: '마이크가 중지되었습니다.' 
+            }, true);
+        }
+
+        // 녹음 시작
+        function startRecording() {
+            if (!stream) {
+                alert('먼저 마이크를 시작해주세요.');
+                return;
+            }
+            
+            try {
+                mediaRecorder = new MediaRecorder(stream);
+                const chunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    chunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'audio/wav' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'recording.wav';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                document.getElementById('recordingStatus').style.display = 'block';
+                
+                showResponse('updateResponse', { 
+                    status: 'success', 
+                    message: '녹음이 시작되었습니다.' 
+                }, true);
+            } catch (error) {
+                showResponse('updateResponse', { 
+                    error: '녹음 시작 실패: ' + error.message 
+                }, false);
+            }
+        }
+
+        // 녹음 중지
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                document.getElementById('recordingStatus').style.display = 'none';
+                
+                showResponse('updateResponse', { 
+                    status: 'success', 
+                    message: '녹음이 중지되었습니다.' 
+                }, true);
+            }
+        }
+
+        // 응답 표시
+        function showResponse(elementId, data, isSuccess) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `response ${isSuccess ? 'success' : 'error'}`;
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+
+        // 페이지 로드 시 서비스 상태 확인
+        window.onload = function() {
+            checkHealth();
+        };
+    </script>
+</body>
+</html> 

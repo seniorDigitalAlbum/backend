@@ -22,9 +22,17 @@ public class Album {
     @Schema(description = "사용자 ID", example = "user123")
     private String userId;
     
-        @Column(name = "conversation_id", nullable = false)
+    @Column(name = "conversation_id", nullable = false)
     @Schema(description = "대화 세션 ID", example = "1")
     private Long conversationId;
+    
+    @Column(name = "final_emotion")
+    @Schema(description = "최종 감정", example = "기쁨")
+    private String finalEmotion;
+    
+    @Column(name = "diary_content", columnDefinition = "TEXT")
+    @Schema(description = "일기 내용", example = "오늘은 어린 시절 추억에 대해 이야기하며 따뜻한 기분을 느꼈습니다.")
+    private String diaryContent;
     
     @Column(name = "created_at", nullable = false)
     @Schema(description = "앨범 생성 시간")

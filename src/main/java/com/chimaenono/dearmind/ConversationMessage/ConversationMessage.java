@@ -27,16 +27,16 @@ public class ConversationMessage {
     @Schema(description = "발신자 타입", example = "USER")
     private SenderType senderType;
     
-    @Column(name = "content", columnDefinition = "TEXT")
-    @Schema(description = "메시지 내용", example = "안녕하세요!")
+    @Column(name = "content", columnDefinition = "TEXT", nullable = false)
+    @Schema(description = "메시지 내용", example = "안녕하세요! 오늘은 어떤 이야기를 나누고 싶으신가요?")
     private String content;
     
     @Column(name = "audio_file_path")
-    @Schema(description = "음성 파일 경로", example = "/audio/user_123_audio.wav")
+    @Schema(description = "음성 파일 경로", example = "/audio/message_1.wav")
     private String audioFilePath;
     
     @Column(name = "video_file_path")
-    @Schema(description = "비디오 파일 경로", example = "/video/user_123_video.mp4")
+    @Schema(description = "비디오 파일 경로", example = "/video/message_1.mp4")
     private String videoFilePath;
     
     @Column(name = "timestamp", nullable = false)

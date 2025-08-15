@@ -17,4 +17,7 @@ public interface AlbumRepository extends JpaRepository<Album, Long> {
     
     // 사용자의 앨범 개수 조회
     long countByUserId(String userId);
+    
+    // 사용자와 감정별 앨범 조회
+    List<Album> findByUserIdAndFinalEmotion(String userId, String finalEmotion);
 } 

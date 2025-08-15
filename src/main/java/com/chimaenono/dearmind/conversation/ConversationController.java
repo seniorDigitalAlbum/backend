@@ -190,6 +190,18 @@ public class ConversationController {
         return ResponseEntity.ok(message);
     }
     
+    @PostMapping("/dummy/{userId}")
+    @Operation(summary = "더미 대화 데이터 생성", description = "테스트용 더미 대화 세션과 메시지를 생성합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "더미 데이터 생성 성공")
+    })
+    public ResponseEntity<String> createDummyConversations(
+            @Parameter(description = "사용자 ID", example = "user123") @PathVariable String userId) {
+        
+        conversationService.createDummyConversations(userId);
+        return ResponseEntity.ok("더미 대화 데이터가 성공적으로 생성되었습니다.");
+    }
+    
     @GetMapping("/health")
     @Operation(summary = "대화 서비스 상태 확인", description = "대화 서비스의 상태를 확인합니다")
     @ApiResponses(value = {

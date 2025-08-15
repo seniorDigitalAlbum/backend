@@ -15,12 +15,6 @@ public interface AlbumRepository extends JpaRepository<Album, Long> {
     // 대화 세션별 앨범 조회
     Optional<Album> findByConversationId(Long conversationId);
     
-    // 질문별 앨범 조회
-    List<Album> findByQuestionIdOrderByCreatedAtDesc(Long questionId);
-    
-    // 사용자와 질문별 앨범 조회
-    List<Album> findByUserIdAndQuestionIdOrderByCreatedAtDesc(String userId, Long questionId);
-    
     // 사용자의 앨범 개수 조회
     long countByUserId(String userId);
 } 

@@ -1,4 +1,4 @@
-package com.chimaenono.dearmind.MediaFile;
+package com.chimaenono.dearmind.mediaFile;
 
 import jakarta.persistence.*;
 import lombok.Data;

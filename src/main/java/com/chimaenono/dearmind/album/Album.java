@@ -22,14 +22,10 @@ public class Album {
     @Schema(description = "사용자 ID", example = "user123")
     private String userId;
     
-    @Column(name = "conversation_id", nullable = false)
+        @Column(name = "conversation_id", nullable = false)
     @Schema(description = "대화 세션 ID", example = "1")
     private Long conversationId;
     
-    @Column(name = "question_id", nullable = false)
-    @Schema(description = "질문 ID", example = "1")
-    private Long questionId;
-   
     @Column(name = "created_at", nullable = false)
     @Schema(description = "앨범 생성 시간")
     private LocalDateTime createdAt;

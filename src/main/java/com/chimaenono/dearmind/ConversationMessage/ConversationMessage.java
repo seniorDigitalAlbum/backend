@@ -1,4 +1,4 @@
-package com.chimaenono.dearmind.ConversationMessage;
+package com.chimaenono.dearmind.conversationMessage;
 
 import jakarta.persistence.*;
 import lombok.Data;

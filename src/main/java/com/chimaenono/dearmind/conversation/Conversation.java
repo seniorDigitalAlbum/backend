@@ -26,9 +26,13 @@ public class Conversation {
     @Schema(description = "선택된 질문 ID", example = "1")
     private Long questionId;
     
-    @Column(name = "session_id")
-    @Schema(description = "카메라/마이크 세션 ID", example = "session_123")
-    private String sessionId;
+    @Column(name = "camera_session_id")
+    @Schema(description = "카메라 세션 ID", example = "camera_session_123")
+    private String cameraSessionId;
+    
+    @Column(name = "microphone_session_id")
+    @Schema(description = "마이크 세션 ID", example = "microphone_session_456")
+    private String microphoneSessionId;
     
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)

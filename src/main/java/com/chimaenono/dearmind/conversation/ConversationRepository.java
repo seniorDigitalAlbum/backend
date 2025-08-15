@@ -15,8 +15,11 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     // 사용자의 활성 대화 세션 조회
     Optional<Conversation> findByUserIdAndStatus(String userId, Conversation.ConversationStatus status);
     
-    // 세션 ID로 대화 조회
-    Optional<Conversation> findBySessionId(String sessionId);
+    // 카메라 세션 ID로 대화 조회
+    Optional<Conversation> findByCameraSessionId(String cameraSessionId);
+    
+    // 마이크 세션 ID로 대화 조회
+    Optional<Conversation> findByMicrophoneSessionId(String microphoneSessionId);
     
     // 질문별 대화 세션 조회
     List<Conversation> findByQuestionIdOrderByCreatedAtDesc(Long questionId);

@@ -23,4 +23,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     
     // 질문별 대화 세션 조회
     List<Conversation> findByQuestionIdOrderByCreatedAtDesc(Long questionId);
+    
+    // 사용자의 대화 세션 개수 조회
+    long countByUserId(String userId);
 } 

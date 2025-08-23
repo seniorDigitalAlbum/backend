@@ -37,3 +37,11 @@ out/
 .vscode/
 
 src/main/resources/application.yml
+
+# Security files
+*.json
+google-cloud-credentials.json
+**/google-cloud-credentials.json
+**/*credentials*.json
+**/*secret*.json
+**/*key*.json

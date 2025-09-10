@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: dearmind-backend
+    env: java
+    buildCommand: ./gradlew build
+    startCommand: java -jar build/libs/dearmind-0.0.1-SNAPSHOT.jar
+    envVars:
+      - key: JAVA_VERSION
+        value: 17

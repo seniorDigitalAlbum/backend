@@ -1,5 +1,6 @@
 package com.chimaenono.dearmind.conversationMessage;
 
+
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -7,6 +8,8 @@ import lombok.AllArgsConstructor;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
+
+import com.chimaenono.userEmotionAnalysis.UserEmotionAnalysis;
 
 @Entity
 @Table(name = "conversation_messages")
@@ -31,17 +34,14 @@ public class ConversationMessage {
     @Schema(description = "메시지 내용", example = "안녕하세요! 오늘은 어떤 이야기를 나누고 싶으신가요?")
     private String content;
     
-    @Column(name = "audio_file_path")
-    @Schema(description = "음성 파일 경로", example = "/audio/message_1.wav")
-    private String audioFilePath;
-    
-    @Column(name = "video_file_path")
-    @Schema(description = "비디오 파일 경로", example = "/video/message_1.mp4")
-    private String videoFilePath;
-    
     @Column(name = "timestamp", nullable = false)
     @Schema(description = "메시지 전송 시간")
     private LocalDateTime timestamp;
+    
+    // 사용자 감정 분석 결과와의 1:1 관계 (USER 메시지에만 존재)
+    @OneToOne(mappedBy = "conversationMessage", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Schema(description = "사용자 감정 분석 결과 (USER 메시지에만 존재)")
+    private UserEmotionAnalysis emotionAnalysis;
     
     public enum SenderType {
         USER, AI

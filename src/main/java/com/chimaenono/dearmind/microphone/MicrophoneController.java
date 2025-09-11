@@ -232,6 +232,111 @@ public class MicrophoneController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/speech/start")
+    @Operation(
+        summary = "발화 시작",
+        description = "사용자의 발화를 시작합니다. 마이크 세션 상태를 RECORDING으로 변경합니다."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "발화 시작 성공",
+            content = @Content(schema = @Schema(implementation = SpeechStartResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "잘못된 요청 데이터",
+            content = @Content(schema = @Schema(implementation = Map.class))
+        ),
+        @ApiResponse(
+            responseCode = "404",
+            description = "마이크 세션을 찾을 수 없음",
+            content = @Content(schema = @Schema(implementation = Map.class))
+        ),
+        @ApiResponse(
+            responseCode = "500",
+            description = "서버 내부 오류",
+            content = @Content(schema = @Schema(implementation = Map.class))
+        )
+    })
+    public ResponseEntity<?> startSpeech(@RequestBody SpeechStartRequest request) {
+        try {
+            SpeechStartResponse response = microphoneService.startSpeech(request);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(400).body(errorResponse);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", "발화 시작 중 오류가 발생했습니다: " + e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
+
+    @PostMapping("/speech/end")
+    @Operation(
+        summary = "발화 종료",
+        description = "사용자의 발화를 종료합니다. 마이크 세션 상태를 ACTIVE로 변경합니다."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "발화 종료 성공",
+            content = @Content(schema = @Schema(implementation = Map.class))
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "잘못된 요청 데이터",
+            content = @Content(schema = @Schema(implementation = Map.class))
+        ),
+        @ApiResponse(
+            responseCode = "404",
+            description = "마이크 세션을 찾을 수 없음",
+            content = @Content(schema = @Schema(implementation = Map.class))
+        ),
+        @ApiResponse(
+            responseCode = "500",
+            description = "서버 내부 오류",
+            content = @Content(schema = @Schema(implementation = Map.class))
+        )
+    })
+    public ResponseEntity<Map<String, Object>> endSpeech(
+        @Parameter(description = "마이크 세션 ID", example = "microphone_session_456")
+        @RequestParam String microphoneSessionId,
+        @Parameter(description = "카메라 세션 ID", example = "camera_session_789")
+        @RequestParam String cameraSessionId,
+        @Parameter(description = "사용자 ID", example = "user123")
+        @RequestParam String userId
+    ) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            boolean success = microphoneService.endSpeech(microphoneSessionId, cameraSessionId, userId);
+            if (success) {
+                response.put("status", "success");
+                response.put("message", "발화가 종료되었습니다.");
+                response.put("microphoneSessionId", microphoneSessionId);
+                response.put("cameraSessionId", cameraSessionId);
+                response.put("userId", userId);
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("status", "error");
+                response.put("message", "발화 종료에 실패했습니다.");
+                return ResponseEntity.status(500).body(response);
+            }
+        } catch (RuntimeException e) {
+            response.put("status", "error");
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(400).body(response);
+        } catch (Exception e) {
+            response.put("status", "error");
+            response.put("message", "발화 종료 중 오류가 발생했습니다: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
     @GetMapping("/health")
     @Operation(
         summary = "마이크 서비스 상태 확인",

@@ -24,6 +24,9 @@ public class ConversationController {
     @Autowired
     private ConversationService conversationService;
     
+    @Autowired
+    private ConversationContextService conversationContextService;
+    
     @PostMapping
     @Operation(summary = "대화 세션 생성", description = "새로운 대화 세션을 생성합니다")
     @ApiResponses(value = {
@@ -154,9 +157,7 @@ public class ConversationController {
     })
     public ResponseEntity<ConversationMessage> saveUserMessage(
             @Parameter(description = "대화 세션 ID", example = "1") @PathVariable Long conversationId,
-            @Parameter(description = "메시지 내용", example = "안녕하세요") @RequestParam String content,
-            @Parameter(description = "음성 파일 경로") @RequestParam(required = false) String audioFilePath,
-            @Parameter(description = "비디오 파일 경로") @RequestParam(required = false) String videoFilePath) {
+            @Parameter(description = "메시지 내용", example = "안녕하세요") @RequestParam String content) {
         
         // 대화 세션이 존재하는지 확인
         Optional<Conversation> conversation = conversationService.getConversationById(conversationId);
@@ -164,7 +165,7 @@ public class ConversationController {
             return ResponseEntity.notFound().build();
         }
         
-        ConversationMessage message = conversationService.saveUserMessage(conversationId, content, audioFilePath, videoFilePath);
+        ConversationMessage message = conversationService.saveUserMessage(conversationId, content);
         return ResponseEntity.ok(message);
     }
     
@@ -176,9 +177,7 @@ public class ConversationController {
     })
     public ResponseEntity<ConversationMessage> saveAIMessage(
             @Parameter(description = "대화 세션 ID", example = "1") @PathVariable Long conversationId,
-            @Parameter(description = "메시지 내용", example = "안녕하세요! 오늘은 어떤 이야기를 나누고 싶으신가요?") @RequestParam String content,
-            @Parameter(description = "음성 파일 경로") @RequestParam(required = false) String audioFilePath,
-            @Parameter(description = "비디오 파일 경로") @RequestParam(required = false) String videoFilePath) {
+            @Parameter(description = "메시지 내용", example = "안녕하세요! 오늘은 어떤 이야기를 나누고 싶으신가요?") @RequestParam String content) {
         
         // 대화 세션이 존재하는지 확인
         Optional<Conversation> conversation = conversationService.getConversationById(conversationId);
@@ -186,7 +185,7 @@ public class ConversationController {
             return ResponseEntity.notFound().build();
         }
         
-        ConversationMessage message = conversationService.saveAIMessage(conversationId, content, audioFilePath, videoFilePath);
+        ConversationMessage message = conversationService.saveAIMessage(conversationId, content);
         return ResponseEntity.ok(message);
     }
     
@@ -200,6 +199,25 @@ public class ConversationController {
         
         conversationService.createDummyConversations(userId);
         return ResponseEntity.ok("더미 대화 데이터가 성공적으로 생성되었습니다.");
+    }
+    
+    @GetMapping("/context/{conversationMessageId}")
+    @Operation(summary = "대화 컨텍스트 조회", description = "특정 메시지의 이전 대화 컨텍스트를 조회합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "대화 컨텍스트 조회 성공"),
+        @ApiResponse(responseCode = "404", description = "대화 메시지를 찾을 수 없음"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<ConversationContextResponse> getConversationContext(
+            @Parameter(description = "대화 메시지 ID", example = "123") @PathVariable Long conversationMessageId) {
+        
+        ConversationContextResponse response = conversationContextService.getConversationContext(conversationMessageId);
+        
+        if (response.getSuccess()) {
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.status(500).body(response);
+        }
     }
     
     @GetMapping("/health")

@@ -28,13 +28,4 @@ public class SpeechEmotionSaveRequest {
     
     @Schema(description = "말 감정 분석 원본 데이터 (JSON)", example = "{\"emotion\":\"기쁨\",\"confidence\":0.92}")
     private String speechEmotionData;
-    
-    @Schema(description = "통합된 최종 감정", example = "joy")
-    private String combinedEmotion;
-    
-    @Schema(description = "통합된 최종 신뢰도", example = "0.88")
-    private Double combinedConfidence;
-    
-    @Schema(description = "분석에 사용된 컨텍스트 정보", example = "이전 대화: 면접 결과를 기다리고...")
-    private String contextInfo;
 }

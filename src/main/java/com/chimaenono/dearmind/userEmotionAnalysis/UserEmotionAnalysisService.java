@@ -29,9 +29,9 @@ public class UserEmotionAnalysisService {
     
     private final ObjectMapper objectMapper = new ObjectMapper();
     
-    @Operation(summary = "사용자 감정 분석 결과 저장", description = "표정 및 말 감정 분석 결과를 저장합니다")
+    @Operation(summary = "표정 감정 분석 결과 저장", description = "표정 감정 분석 결과를 저장합니다")
     @Transactional
-    public UserEmotionAnalysisResponse saveEmotionAnalysis(UserEmotionAnalysisRequest request) {
+    public UserEmotionAnalysisResponse saveFacialEmotionAnalysis(FacialEmotionSaveRequest request) {
         // 대화 메시지 조회
         Optional<ConversationMessage> messageOpt = conversationMessageRepository.findById(request.getConversationMessageId());
         if (!messageOpt.isPresent()) {
@@ -40,28 +40,69 @@ public class UserEmotionAnalysisService {
         
         ConversationMessage message = messageOpt.get();
         
-        // UserEmotionAnalysis 엔티티 생성
-        UserEmotionAnalysis analysis = new UserEmotionAnalysis();
-        analysis.setConversationMessage(message);
+        // UserEmotionAnalysis 엔티티 생성 또는 업데이트
+        Optional<UserEmotionAnalysis> existingAnalysis = userEmotionAnalysisRepository.findByConversationMessageId(request.getConversationMessageId());
+        UserEmotionAnalysis analysis;
+        
+        if (existingAnalysis.isPresent()) {
+            // 기존 레코드 업데이트
+            analysis = existingAnalysis.get();
+        } else {
+            // 새 레코드 생성
+            analysis = new UserEmotionAnalysis();
+            analysis.setConversationMessage(message);
+        }
         
         // 표정 감정 데이터 JSON 변환
-        if (request.getFacialEmotionData() != null) {
-            try {
-                String facialEmotionJson = objectMapper.writeValueAsString(request.getFacialEmotionData());
-                analysis.setFacialEmotion(facialEmotionJson);
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException("표정 감정 데이터 JSON 변환 실패: " + e.getMessage());
-            }
+        try {
+            String facialEmotionJson = objectMapper.writeValueAsString(request.getFacialEmotionData());
+            analysis.setFacialEmotion(facialEmotionJson);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("표정 감정 데이터 JSON 변환 실패: " + e.getMessage());
+        }
+        
+        // 표정 감정만 있으므로 combinedEmotion과 combinedConfidence는 facial 결과와 동일
+        analysis.setCombinedEmotion(request.getFacialEmotionData().getFinalEmotion());
+        analysis.setCombinedConfidence(request.getFacialEmotionData().getAverageConfidence());
+        analysis.setAnalysisTimestamp(LocalDateTime.now());
+        
+        // 데이터베이스에 저장
+        UserEmotionAnalysis savedAnalysis = userEmotionAnalysisRepository.save(analysis);
+        
+        // Response DTO로 변환하여 반환
+        return UserEmotionAnalysisResponse.from(savedAnalysis);
+    }
+    
+    @Operation(summary = "말 감정 분석 결과 저장", description = "말 감정 분석 결과를 저장합니다")
+    @Transactional
+    public UserEmotionAnalysisResponse saveSpeechEmotionAnalysis(SpeechEmotionSaveRequest request) {
+        // 대화 메시지 조회
+        Optional<ConversationMessage> messageOpt = conversationMessageRepository.findById(request.getConversationMessageId());
+        if (!messageOpt.isPresent()) {
+            throw new RuntimeException("대화 메시지를 찾을 수 없습니다: " + request.getConversationMessageId());
+        }
+        
+        ConversationMessage message = messageOpt.get();
+        
+        // UserEmotionAnalysis 엔티티 생성 또는 업데이트
+        Optional<UserEmotionAnalysis> existingAnalysis = userEmotionAnalysisRepository.findByConversationMessageId(request.getConversationMessageId());
+        UserEmotionAnalysis analysis;
+        
+        if (existingAnalysis.isPresent()) {
+            // 기존 레코드 업데이트
+            analysis = existingAnalysis.get();
+        } else {
+            // 새 레코드 생성
+            analysis = new UserEmotionAnalysis();
+            analysis.setConversationMessage(message);
         }
         
         // 말 감정 데이터 설정
-        if (request.getSpeechEmotionData() != null) {
-            analysis.setSpeechEmotion(request.getSpeechEmotionData());
-        }
+        analysis.setSpeechEmotion(request.getSpeechEmotionData());
         
-        // 통합 감정 설정
-        analysis.setCombinedEmotion(request.getCombinedEmotion());
-        analysis.setCombinedConfidence(request.getCombinedConfidence());
+        // 말 감정만 있으므로 combinedEmotion과 combinedConfidence는 speech 결과와 동일
+        analysis.setCombinedEmotion(request.getEmotion());
+        analysis.setCombinedConfidence(request.getConfidence());
         analysis.setAnalysisTimestamp(LocalDateTime.now());
         
         // 데이터베이스에 저장
@@ -111,40 +152,4 @@ public class UserEmotionAnalysisService {
         return false;
     }
     
-    @Operation(summary = "감정 분석 결과 업데이트", description = "기존 감정 분석 결과를 업데이트합니다")
-    @Transactional
-    public Optional<UserEmotionAnalysisResponse> updateEmotionAnalysis(Long analysisId, UserEmotionAnalysisRequest request) {
-        Optional<UserEmotionAnalysis> analysisOpt = userEmotionAnalysisRepository.findById(analysisId);
-        if (!analysisOpt.isPresent()) {
-            return Optional.empty();
-        }
-        
-        UserEmotionAnalysis analysis = analysisOpt.get();
-        
-        // 표정 감정 데이터 업데이트
-        if (request.getFacialEmotionData() != null) {
-            try {
-                String facialEmotionJson = objectMapper.writeValueAsString(request.getFacialEmotionData());
-                analysis.setFacialEmotion(facialEmotionJson);
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException("표정 감정 데이터 JSON 변환 실패: " + e.getMessage());
-            }
-        }
-        
-        // 말 감정 데이터 업데이트
-        if (request.getSpeechEmotionData() != null) {
-            analysis.setSpeechEmotion(request.getSpeechEmotionData());
-        }
-        
-        // 통합 감정 업데이트
-        if (request.getCombinedEmotion() != null) {
-            analysis.setCombinedEmotion(request.getCombinedEmotion());
-        }
-        if (request.getCombinedConfidence() != null) {
-            analysis.setCombinedConfidence(request.getCombinedConfidence());
-        }
-        
-        UserEmotionAnalysis updatedAnalysis = userEmotionAnalysisRepository.save(analysis);
-        return Optional.of(UserEmotionAnalysisResponse.from(updatedAnalysis));
-    }
 }

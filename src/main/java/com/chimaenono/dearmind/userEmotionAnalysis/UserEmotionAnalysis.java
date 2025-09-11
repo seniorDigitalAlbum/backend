@@ -1,4 +1,4 @@
-package com.chimaenono.userEmotionAnalysis;
+package com.chimaenono.dearmind.userEmotionAnalysis;
 
 import jakarta.persistence.*;
 import lombok.Data;

@@ -1,4 +1,4 @@
-package com.chimaenono.userEmotionAnalysis;
+package com.chimaenono.dearmind.userEmotionAnalysis;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

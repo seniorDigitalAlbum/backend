@@ -96,24 +96,20 @@ public class ConversationService {
     }
     
     @Operation(summary = "사용자 메시지 저장", description = "사용자의 메시지를 저장합니다")
-    public ConversationMessage saveUserMessage(Long conversationId, String content, String audioFilePath, String videoFilePath) {
+    public ConversationMessage saveUserMessage(Long conversationId, String content) {
         ConversationMessage message = new ConversationMessage();
         message.setConversationId(conversationId);
         message.setSenderType(ConversationMessage.SenderType.USER);
         message.setContent(content);
-        message.setAudioFilePath(audioFilePath);
-        message.setVideoFilePath(videoFilePath);
         return saveMessage(message);
     }
     
     @Operation(summary = "AI 메시지 저장", description = "AI의 메시지를 저장합니다")
-    public ConversationMessage saveAIMessage(Long conversationId, String content, String audioFilePath, String videoFilePath) {
+    public ConversationMessage saveAIMessage(Long conversationId, String content) {
         ConversationMessage message = new ConversationMessage();
         message.setConversationId(conversationId);
         message.setSenderType(ConversationMessage.SenderType.AI);
         message.setContent(content);
-        message.setAudioFilePath(audioFilePath);
-        message.setVideoFilePath(videoFilePath);
         return saveMessage(message);
     }
     

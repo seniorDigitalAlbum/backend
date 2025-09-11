@@ -117,6 +117,18 @@ public class TTSService {
         return synthesizeSpeech(text, "ko-KR-Neural2-A", "1.0", "0.0", "0.0", "mp3");
     }
     
+    @Operation(summary = "TTS 요청 객체로 변환", description = "TTSRequest 객체를 사용하여 텍스트를 음성으로 변환합니다")
+    public TTSResponse convertToSpeech(TTSRequest request) {
+        // TTSRequest의 필드를 사용하여 기존 메서드 호출
+        String voice = request.getVoiceName() != null ? request.getVoiceName() : "ko-KR-Neural2-A";
+        String speed = request.getSpeed() != null ? request.getSpeed() : "1.0";
+        String pitch = request.getPitch() != null ? request.getPitch() : "0.0";
+        String volume = request.getVolume() != null ? request.getVolume() : "0.0";
+        String format = request.getAudioEncoding() != null ? request.getAudioEncoding().toLowerCase() : "mp3";
+        
+        return synthesizeSpeech(request.getText(), voice, speed, pitch, volume, format);
+    }
+    
     /**
      * 서비스 계정을 사용하여 액세스 토큰 가져오기
      */

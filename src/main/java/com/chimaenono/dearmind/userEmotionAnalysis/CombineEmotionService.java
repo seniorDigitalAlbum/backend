@@ -25,11 +25,11 @@ public class CombineEmotionService {
     // 감정 매핑 테이블 (영어 ↔ 한국어)
     private final Map<String, String> emotionMapping = Map.of(
         "joy", "기쁨",
-        "sadness", "슬픔", 
-        "anger", "화남",
-        "fear", "두려움",
-        "surprise", "놀람",
-        "disgust", "혐오",
+        "embarrassed", "당황", 
+        "anger", "분노",
+        "anxious", "불안",
+        "hurt", "상처",
+        "sad", "슬픔",
         "neutral", "중립"
     );
     

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPT API 테스트</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🤖 GPT API 테스트</h1>
+    
+    <div class="grid">
+        <!-- 감정 기반 대화 테스트 -->
+        <div class="container">
+            <h2>감정 기반 대화 생성 테스트</h2>
+            
+            <div class="form-group">
+                <label for="emotion">감정:</label>
+                <select id="emotion">
+                    <option value="슬픔">슬픔</option>
+                    <option value="기쁨">기쁨</option>
+                    <option value="분노">분노</option>
+                    <option value="불안">불안</option>
+                    <option value="당황">당황</option>
+                    <option value="상처">상처</option>
+                    <option value="중립">중립</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="confidence">신뢰도 (0.0 ~ 1.0):</label>
+                <input type="number" id="confidence" min="0" max="1" step="0.01" value="0.95">
+            </div>
+            
+            <div class="form-group">
+                <label for="prevUser">이전 사용자 발화:</label>
+                <textarea id="prevUser" placeholder="이전 사용자 발화를 입력하세요...">오늘 중요한 시험을 망친 것 같아요. 너무 속상해요.</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="prevSys">이전 AI 발화:</label>
+                <textarea id="prevSys" placeholder="이전 AI 발화를 입력하세요...">아이고, 정말 힘들었겠어요. 수고 많으셨어요.</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="currUser">현재 사용자 발화:</label>
+                <textarea id="currUser" placeholder="현재 사용자 발화를 입력하세요...">공부한 만큼 결과가 안 나와서 실망이 커요.</textarea>
+            </div>
+            
+            <button onclick="testEmotionBasedConversation()">감정 기반 대화 생성</button>
+            <button onclick="clearResults()">결과 지우기</button>
+            
+            <div id="emotionResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <!-- GPT API 직접 테스트 -->
+        <div class="container">
+            <h2>GPT API 직접 테스트</h2>
+            
+            <div class="form-group">
+                <label for="model">모델:</label>
+                <select id="model">
+                    <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                    <option value="gpt-4">gpt-4</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="maxTokens">최대 토큰 수:</label>
+                <input type="number" id="maxTokens" value="500" min="1" max="4000">
+            </div>
+            
+            <div class="form-group">
+                <label for="temperature">온도 (창의성):</label>
+                <input type="number" id="temperature" min="0" max="2" step="0.1" value="0.7">
+            </div>
+            
+            <div class="form-group">
+                <label for="systemMessage">시스템 메시지:</label>
+                <textarea id="systemMessage" placeholder="시스템 메시지를 입력하세요...">너는 사용자의 감정에 공감하는 AI 친구야.</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="userMessage">사용자 메시지:</label>
+                <textarea id="userMessage" placeholder="사용자 메시지를 입력하세요...">안녕하세요! 오늘 기분이 좋지 않아요.</textarea>
+            </div>
+            
+            <button onclick="testGPTAPI()">GPT API 테스트</button>
+            <button onclick="clearResults()">결과 지우기</button>
+            
+            <div id="gptResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080';
+        
+        async function testEmotionBasedConversation() {
+            const emotion = document.getElementById('emotion').value;
+            const confidence = parseFloat(document.getElementById('confidence').value);
+            const prevUser = document.getElementById('prevUser').value;
+            const prevSys = document.getElementById('prevSys').value;
+            const currUser = document.getElementById('currUser').value;
+            
+            const resultDiv = document.getElementById('emotionResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '감정 기반 대화를 생성하고 있습니다...';
+            
+            try {
+                const params = new URLSearchParams({
+                    emotion: emotion,
+                    confidence: confidence,
+                    prevUser: prevUser,
+                    prevSys: prevSys,
+                    currUser: currUser
+                });
+                
+                const response = await fetch(`${API_BASE_URL}/api/gpt/emotion-test?${params}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.className = 'result success';
+                    let resultText = `✅ 성공!\n\n` +
+                        `감정 정보: ${data.emotionInfo}\n` +
+                        `AI 응답: ${data.aiResponse}\n` +
+                        `저장된 AI 메시지 ID: ${data.savedAIMessageId || 'N/A'}\n`;
+                    
+                    if (data.audioBase64) {
+                        resultText += `TTS 오디오: 재생 가능\n`;
+                    } else {
+                        resultText += `TTS 오디오: N/A\n`;
+                    }
+                    
+                    resultText += `\n전체 응답:\n${JSON.stringify(data, null, 2)}`;
+                    
+                    resultDiv.textContent = resultText;
+                    
+                    // 오디오 재생 버튼 추가
+                    if (data.audioBase64) {
+                        const audioButton = document.createElement('button');
+                        audioButton.textContent = '🔊 오디오 재생';
+                        audioButton.style.marginTop = '10px';
+                        audioButton.style.padding = '8px 16px';
+                        audioButton.style.backgroundColor = '#28a745';
+                        audioButton.style.color = 'white';
+                        audioButton.style.border = 'none';
+                        audioButton.style.borderRadius = '4px';
+                        audioButton.style.cursor = 'pointer';
+                        
+                        audioButton.onclick = function() {
+                            playAudioFromBase64(data.audioBase64);
+                        };
+                        
+                        resultDiv.appendChild(audioButton);
+                    }
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ 오류: ${data.message || '알 수 없는 오류가 발생했습니다.'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 네트워크 오류: ${error.message}`;
+            }
+        }
+        
+        async function testGPTAPI() {
+            const model = document.getElementById('model').value;
+            const maxTokens = parseInt(document.getElementById('maxTokens').value);
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            const systemMessage = document.getElementById('systemMessage').value;
+            const userMessage = document.getElementById('userMessage').value;
+            
+            const resultDiv = document.getElementById('gptResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = 'GPT API를 호출하고 있습니다...';
+            
+            try {
+                const requestBody = {
+                    model: model,
+                    max_tokens: maxTokens,
+                    temperature: temperature,
+                    stream: false,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: systemMessage
+                        },
+                        {
+                            role: 'user',
+                            content: userMessage
+                        }
+                    ]
+                };
+                
+                const response = await fetch(`${API_BASE_URL}/api/gpt/test`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    const aiResponse = data.choices && data.choices[0] && data.choices[0].message 
+                        ? data.choices[0].message.content 
+                        : '응답을 찾을 수 없습니다.';
+                    
+                    resultDiv.textContent = `✅ 성공!\n\n` +
+                        `AI 응답: ${aiResponse}\n\n` +
+                        `사용량 정보:\n` +
+                        `- 프롬프트 토큰: ${data.usage?.promptTokens || 'N/A'}\n` +
+                        `- 완료 토큰: ${data.usage?.completionTokens || 'N/A'}\n` +
+                        `- 총 토큰: ${data.usage?.totalTokens || 'N/A'}\n\n` +
+                        `전체 응답:\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ 오류: ${data.message || '알 수 없는 오류가 발생했습니다.'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 네트워크 오류: ${error.message}`;
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('emotionResult').style.display = 'none';
+            document.getElementById('gptResult').style.display = 'none';
+        }
+        
+        function playAudioFromBase64(base64Data) {
+            try {
+                // Base64 데이터를 바이너리로 변환
+                const binaryString = atob(base64Data);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                // Blob 생성
+                const blob = new Blob([bytes], { type: 'audio/mpeg' });
+                const audioUrl = URL.createObjectURL(blob);
+                
+                // 오디오 재생
+                const audio = new Audio(audioUrl);
+                audio.play().then(() => {
+                    console.log('오디오 재생 시작');
+                }).catch(error => {
+                    console.error('오디오 재생 실패:', error);
+                    alert('오디오 재생에 실패했습니다: ' + error.message);
+                });
+                
+                // 재생 완료 후 URL 해제
+                audio.addEventListener('ended', () => {
+                    URL.revokeObjectURL(audioUrl);
+                });
+                
+            } catch (error) {
+                console.error('Base64 오디오 재생 오류:', error);
+                alert('오디오 재생 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

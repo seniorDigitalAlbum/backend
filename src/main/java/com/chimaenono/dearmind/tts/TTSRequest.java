@@ -12,6 +12,15 @@ public class TTSRequest {
     @Schema(description = "변환할 텍스트", example = "안녕하세요! 오늘 날씨가 정말 좋네요.")
     private String text;
     
+    @Schema(description = "언어 코드", example = "ko-KR")
+    private String languageCode;
+    
+    @Schema(description = "음성 이름", example = "ko-KR-Wavenet-A")
+    private String voiceName;
+    
+    @Schema(description = "오디오 인코딩", example = "MP3")
+    private String audioEncoding;
+    
     @Schema(description = "음성 타입", example = "nara", allowableValues = {"nara", "nwoo", "dara", "bora", "vhyeri", "csy", "nsy", "nhs", "ndain", "njiyun", "njinho", "nsinu", "nara_call", "nwoo_call", "dara_call", "bora_call"})
     private String voice;
     

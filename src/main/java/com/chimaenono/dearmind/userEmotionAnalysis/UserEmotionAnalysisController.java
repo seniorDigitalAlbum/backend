@@ -1,4 +1,4 @@
-package com.chimaenono.userEmotionAnalysis;
+package com.chimaenono.dearmind.userEmotionAnalysis;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

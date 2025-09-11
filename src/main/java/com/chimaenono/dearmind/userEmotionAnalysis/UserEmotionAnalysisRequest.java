@@ -1,4 +1,4 @@
-package com.chimaenono.userEmotionAnalysis;
+package com.chimaenono.dearmind.userEmotionAnalysis;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;

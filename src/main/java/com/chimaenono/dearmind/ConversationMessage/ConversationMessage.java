@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
-import com.chimaenono.userEmotionAnalysis.UserEmotionAnalysis;
+import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysis;
 
 @Entity
 @Table(name = "conversation_messages")

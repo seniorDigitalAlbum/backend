@@ -1,0 +1,39 @@
+# .dockerignore - Docker 빌드 시 제외할 파일들
+
+# Git 관련
+.git
+.gitignore
+
+# IDE 관련
+.idea
+.vscode
+*.iml
+*.iws
+*.ipr
+
+# Gradle 관련 (build 폴더는 포함해야 함)
+.gradle
+# gradle/wrapper/gradle-wrapper.jar  # 이 파일은 포함해야 함
+
+# 기타
+HELP.md
+*.md
+
+# 보안 파일
+*.json
+google-cloud-credentials.json
+**/google-cloud-credentials.json
+**/*credentials*.json
+**/*secret*.json
+**/*key*.json
+
+# 테스트 관련
+src/test/
+
+# 로그 파일
+*.log
+logs/
+
+# 임시 파일
+*.tmp
+*.temp

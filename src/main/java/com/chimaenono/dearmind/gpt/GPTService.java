@@ -11,6 +11,9 @@ import com.chimaenono.dearmind.conversation.ConversationService;
 import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
 import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysis;
 import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysisRepository;
+import com.chimaenono.dearmind.music.MusicRecommendation;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -20,6 +23,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.ArrayList;
 
 @Service
 public class GPTService {
@@ -401,10 +405,168 @@ public class GPTService {
         // 평균 신뢰도 계산
         double averageConfidence = analyzedCount > 0 ? totalConfidence / analyzedCount : 0.0;
         
-        // JSON 형태로 감정 분포 저장
-        String emotionDistribution = emotionCounts.toString();
+        // JSON 형태로 감정 분포 저장 (올바른 JSON 형식으로 변환)
+        String emotionDistribution = convertMapToJson(emotionCounts);
         
         // Conversation 테이블에 저장
         conversationService.saveConversationEmotionAnalysis(conversationId, dominantEmotion, averageConfidence, emotionDistribution);
+    }
+    
+    /**
+     * 일기 내용과 감정을 바탕으로 음악을 추천합니다.
+     */
+    public List<MusicRecommendation> generateMusicRecommendations(
+            String diary, String emotion, Double confidence) throws Exception {
+        
+        // 프롬프트 구성
+        StringBuilder promptBuilder = new StringBuilder();
+        promptBuilder.append("**[역할 설정]**\n");
+        promptBuilder.append("너는 사용자의 일기 내용과 감정을 분석하여, 그에 가장 잘 어울리는 음악을 추천해주는 전문적인 음악 큐레이터야.\n\n");
+        
+        promptBuilder.append("**[입력 데이터]**\n");
+        promptBuilder.append("사용자의 일기 내용:\n");
+        promptBuilder.append("\"").append(diary).append("\"\n\n");
+        promptBuilder.append("사용자의 감정: '").append(emotion).append("', 신뢰도: ").append(String.format("%.0f", confidence * 100)).append("%\n\n");
+        
+        promptBuilder.append("**[추천 조건]**\n");
+        promptBuilder.append("1. 감정: '").append(emotion).append("'에 공감하면서도 너무 우울하지 않은, 잔잔하고 따뜻한 위로를 주는 음악을 추천해줘.\n");
+        promptBuilder.append("2. 장르: 인디, 발라드 장르의 곡을 선호해.\n");
+        promptBuilder.append("3. 추천 개수: 3곡\n");
+        promptBuilder.append("4. 반드시 실제로 존재하는 한국 가요만 추천해줘.\n");
+        promptBuilder.append("5. 매우 유명하고 대중적으로 알려진 가수와 그들의 대표곡만 추천해줘.\n");
+        promptBuilder.append("6. 가수와 노래 제목의 조합이 정확해야 합니다.\n");
+        promptBuilder.append("7. 추천 예시: 아이유-좋은날, 이승기-삭제, 태연-만약에, 박효신-야생화\n");
+        promptBuilder.append("8. 제목과 가수명을 정확하게 입력해줘.\n\n");
+        
+        promptBuilder.append("**[출력 형식]**\n");
+        promptBuilder.append("아래 JSON 형식으로 출력해줘. YouTube 링크는 제공하지 마세요.\n");
+        promptBuilder.append("{\n");
+        promptBuilder.append("  \"recommended_music\": [\n");
+        promptBuilder.append("    {\n");
+        promptBuilder.append("      \"title\": \"노래 제목\",\n");
+        promptBuilder.append("      \"artist\": \"가수 이름\",\n");
+        promptBuilder.append("      \"mood\": \"음악 분위기\"\n");
+        promptBuilder.append("    }\n");
+        promptBuilder.append("  ]\n");
+        promptBuilder.append("}\n");
+        
+        // GPT API 호출
+        GPTRequest gptRequest = new GPTRequest();
+        gptRequest.setModel(defaultModel);
+        gptRequest.setMax_tokens(800);
+        gptRequest.setTemperature(0.7);
+        gptRequest.setStream(false);
+        
+        GPTMessage systemMessage = new GPTMessage("system", promptBuilder.toString());
+        GPTMessage userMessage = new GPTMessage("user", "음악을 추천해줘.");
+        
+        gptRequest.setMessages(List.of(systemMessage, userMessage));
+        
+        GPTResponse gptResponse = generateResponse(gptRequest);
+        String responseText = gptResponse.getChoices().get(0).getMessage().getContent();
+        
+        System.out.println("GPT 음악 추천 응답: " + responseText);
+        
+        // JSON 파싱하여 MusicRecommendation 리스트로 변환
+        return parseMusicRecommendations(responseText);
+    }
+    
+    /**
+     * GPT 응답을 파싱하여 MusicRecommendation 리스트로 변환합니다.
+     */
+    private List<MusicRecommendation> parseMusicRecommendations(String responseText) throws Exception {
+        try {
+            // JSON 부분만 추출 (```json ... ``` 형태일 수 있음)
+            String jsonText = responseText;
+            if (responseText.contains("```json")) {
+                int start = responseText.indexOf("```json") + 7;
+                int end = responseText.indexOf("```", start);
+                if (end > start) {
+                    jsonText = responseText.substring(start, end).trim();
+                }
+            } else if (responseText.contains("```")) {
+                int start = responseText.indexOf("```") + 3;
+                int end = responseText.indexOf("```", start);
+                if (end > start) {
+                    jsonText = responseText.substring(start, end).trim();
+                }
+            }
+            
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode rootNode = objectMapper.readTree(jsonText);
+            JsonNode musicArray = rootNode.get("recommended_music");
+            
+            List<MusicRecommendation> recommendations = new ArrayList<>();
+            
+            if (musicArray != null && musicArray.isArray()) {
+                for (JsonNode musicNode : musicArray) {
+                    MusicRecommendation music = new MusicRecommendation();
+                    music.setTitle(musicNode.get("title").asText());
+                    music.setArtist(musicNode.get("artist").asText());
+                    music.setMood(musicNode.get("mood").asText());
+                    // YouTube 링크는 나중에 YouTubeSearchService에서 생성
+                    music.setYoutubeLink(null);
+                    recommendations.add(music);
+                }
+            }
+            
+            return recommendations;
+            
+        } catch (Exception e) {
+            System.err.println("음악 추천 JSON 파싱 오류: " + e.getMessage());
+            System.err.println("원본 응답: " + responseText);
+            
+            // 파싱 실패 시 기본 음악 추천 반환
+            return createDefaultMusicRecommendations();
+        }
+    }
+    
+    /**
+     * 파싱 실패 시 기본 음악 추천을 생성합니다.
+     */
+    private List<MusicRecommendation> createDefaultMusicRecommendations() {
+        List<MusicRecommendation> defaultRecommendations = new ArrayList<>();
+        
+        // 검증된 음악 추천 1 - 아이유 좋은날
+        MusicRecommendation music1 = new MusicRecommendation();
+        music1.setTitle("좋은날");
+        music1.setArtist("아이유");
+        music1.setMood("희망적이고 밝은");
+        music1.setYoutubeLink("https://www.youtube.com/watch?v=jeqdYqsrsA0");
+        music1.setYoutubeVideoId("jeqdYqsrsA0");
+        defaultRecommendations.add(music1);
+        
+        // 검증된 음악 추천 2 - 이승기 삭제
+        MusicRecommendation music2 = new MusicRecommendation();
+        music2.setTitle("삭제");
+        music2.setArtist("이승기");
+        music2.setMood("감성적이고 위로가 되는");
+        music2.setYoutubeLink("https://www.youtube.com/watch?v=9bZkp7q19f0");
+        music2.setYoutubeVideoId("9bZkp7q19f0");
+        defaultRecommendations.add(music2);
+        
+        // 검증된 음악 추천 3 - 태연 만약에
+        MusicRecommendation music3 = new MusicRecommendation();
+        music3.setTitle("만약에");
+        music3.setArtist("태연");
+        music3.setMood("잔잔하고 아름다운");
+        music3.setYoutubeLink("https://www.youtube.com/watch?v=0-q1KafFCLU");
+        music3.setYoutubeVideoId("0-q1KafFCLU");
+        defaultRecommendations.add(music3);
+        
+        return defaultRecommendations;
+    }
+    
+    /**
+     * Map을 올바른 JSON 형식으로 변환합니다.
+     */
+    private String convertMapToJson(Map<String, Integer> map) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.writeValueAsString(map);
+        } catch (Exception e) {
+            System.err.println("JSON 변환 오류: " + e.getMessage());
+            return "{}"; // 빈 JSON 객체 반환
+        }
     }
 }

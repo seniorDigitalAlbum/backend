@@ -1,10 +1,12 @@
 package com.chimaenono.dearmind.conversation;
 
+import com.chimaenono.dearmind.music.MusicRecommendation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -24,6 +26,9 @@ public class DiaryResponse {
     
     @Schema(description = "감정 분석 요약")
     private EmotionSummary emotionSummary;
+    
+    @Schema(description = "추천 음악 목록")
+    private List<MusicRecommendation> musicRecommendations;
     
     @Schema(description = "응답 메시지", example = "일기를 성공적으로 조회했습니다.")
     private String message;
@@ -50,12 +55,13 @@ public class DiaryResponse {
     }
     
     public static DiaryResponse success(Long conversationId, String summary, String diary, 
-                                      EmotionSummary emotionSummary, String message) {
+                                      EmotionSummary emotionSummary, List<MusicRecommendation> musicRecommendations, String message) {
         DiaryResponse response = new DiaryResponse();
         response.setConversationId(conversationId);
         response.setSummary(summary);
         response.setDiary(diary);
         response.setEmotionSummary(emotionSummary);
+        response.setMusicRecommendations(musicRecommendations);
         response.setMessage(message);
         response.setSuccess(true);
         return response;

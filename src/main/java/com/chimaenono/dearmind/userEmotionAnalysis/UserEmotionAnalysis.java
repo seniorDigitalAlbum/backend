@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.time.LocalDateTime;
 
@@ -23,6 +24,7 @@ public class UserEmotionAnalysis {
     
     @OneToOne
     @JoinColumn(name = "conversation_message_id", nullable = false)
+    @JsonIgnore // 순환 참조 방지
     @Schema(description = "대화 메시지 ID", example = "1")
     private ConversationMessage conversationMessage;
     

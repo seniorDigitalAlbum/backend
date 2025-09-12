@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.*;
 import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
 import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysis;
 import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysisRepository;
+import com.chimaenono.dearmind.music.MusicRecommendation;
+import com.chimaenono.dearmind.music.MusicRecommendationService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,6 +20,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 @RestController
 @RequestMapping("/api/conversations")
@@ -36,6 +40,9 @@ public class ConversationController {
     
     @Autowired
     private UserEmotionAnalysisRepository userEmotionAnalysisRepository;
+    
+    @Autowired
+    private MusicRecommendationService musicRecommendationService;
     
     @PostMapping
     @Operation(summary = "대화 세션 생성", description = "새로운 대화 세션을 생성합니다")
@@ -343,11 +350,21 @@ public class ConversationController {
             // 저장된 감정 분석 결과 사용
             DiaryResponse.EmotionSummary emotionSummary = createEmotionSummaryFromConversation(conversation);
             
+            // 음악 추천 조회 또는 생성
+            List<MusicRecommendation> musicRecommendations = musicRecommendationService
+                .getOrGenerateMusicRecommendations(
+                    conversationId,
+                    conversation.getDiary(),
+                    conversation.getDominantEmotion(),
+                    conversation.getEmotionConfidence()
+                );
+            
             DiaryResponse response = DiaryResponse.success(
                 conversationId,
                 conversation.getSummary(),
                 conversation.getDiary(),
                 emotionSummary,
+                musicRecommendations,
                 "일기를 성공적으로 조회했습니다."
             );
             
@@ -438,23 +455,16 @@ public class ConversationController {
         }
         
         if (conversation.getEmotionDistribution() != null && !conversation.getEmotionDistribution().isEmpty()) {
-            // JSON 문자열을 Map으로 파싱 (간단한 구현)
+            // JSON 문자열을 Map으로 파싱
             try {
-                Map<String, Integer> emotionCounts = new HashMap<>();
-                String distribution = conversation.getEmotionDistribution();
-                // "기쁨=4, 슬픔=1" 형태를 파싱
-                if (distribution.startsWith("{") && distribution.endsWith("}")) {
-                    distribution = distribution.substring(1, distribution.length() - 1);
-                    String[] pairs = distribution.split(", ");
-                    for (String pair : pairs) {
-                        String[] keyValue = pair.split("=");
-                        if (keyValue.length == 2) {
-                            emotionCounts.put(keyValue[0], Integer.parseInt(keyValue[1]));
-                        }
-                    }
-                }
+                ObjectMapper objectMapper = new ObjectMapper();
+                Map<String, Integer> emotionCounts = objectMapper.readValue(
+                    conversation.getEmotionDistribution(), 
+                    new TypeReference<Map<String, Integer>>() {}
+                );
                 summary.setEmotionCounts(emotionCounts);
             } catch (Exception e) {
+                System.err.println("감정 분포 JSON 파싱 오류: " + e.getMessage());
                 summary.setEmotionCounts(Map.of());
             }
         } else {

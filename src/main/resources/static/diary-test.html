@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>일기 생성 테스트</title>
+    <!-- YouTube Player API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -101,6 +103,116 @@
             margin: 15px 0;
             line-height: 1.6;
         }
+        .music-item {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .music-item:hover {
+            background-color: #e9ecef;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .music-item.active {
+            border-left: 4px solid #28a745;
+            background-color: #e8f5e8;
+        }
+        .play-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .play-btn:hover {
+            background-color: #218838;
+        }
+        
+        /* YouTube Player Styles */
+        .music-player {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+        }
+        .player-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .player-info {
+            flex: 1;
+        }
+        .player-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 18px;
+        }
+        .player-info p {
+            margin: 0;
+            opacity: 0.8;
+            font-size: 14px;
+        }
+        .player-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .control-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .control-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .playlist-indicator {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        .close-player {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .close-player:hover {
+            background: rgba(255,255,255,0.3);
+        }
         .summary-content {
             background-color: #f0f8f0;
             border: 1px solid #c3e6c3;
@@ -150,12 +262,47 @@
             <button onclick="getDiary()" id="diaryBtn" disabled>일기 보러 가기</button>
             <div id="diaryResult" class="result" style="display: none;"></div>
             <div id="diaryContent" style="display: none;"></div>
+            <div id="musicRecommendations" style="display: none;">
+                <h3>🎵 추천 음악</h3>
+                <div id="musicList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden YouTube Player -->
+    <div id="player" style="display: none;"></div>
+
+    <!-- Music Player -->
+    <div id="musicPlayer" class="music-player">
+        <div class="player-content">
+            <div class="player-info">
+                <h3 id="playerTitle">음악 제목</h3>
+                <p id="playerArtist">아티스트</p>
+            </div>
+            <div class="player-controls">
+                <button class="control-btn" id="prevBtn" onclick="playPrevious()" title="이전 곡">⏮</button>
+                <button class="control-btn" id="playPauseBtn" onclick="togglePlayPause()" title="재생/일시정지">▶</button>
+                <button class="control-btn" id="nextBtn" onclick="playNext()" title="다음 곡">⏭</button>
+                <div class="playlist-indicator" id="playlistIndicator">1/3</div>
+            </div>
+            <button class="close-player" onclick="closePlayer()">닫기</button>
         </div>
     </div>
 
     <script>
         let pollingInterval = null;
         let conversationId = null;
+        
+        // YouTube Player 관련 변수
+        let player = null;
+        let currentPlaylist = [];
+        let currentTrackIndex = 0;
+        let isPlaying = false;
+        
+        // YouTube Player API 초기화
+        function onYouTubeIframeAPIReady() {
+            console.log('YouTube Player API 준비 완료');
+        }
         
         // 0. 테스트 데이터 생성
         async function createTestData() {
@@ -349,12 +496,187 @@
                         
                         ${emotionHtml}
                     `;
+                    
+                    // 음악 추천 표시
+                    if (data.musicRecommendations && data.musicRecommendations.length > 0) {
+                        displayMusicRecommendations(data.musicRecommendations);
+                        // 플레이리스트 설정
+                        currentPlaylist = data.musicRecommendations;
+                    }
                 }
                 
             } catch (error) {
                 document.getElementById('diaryResult').style.display = 'block';
                 document.getElementById('diaryResult').textContent = '오류: ' + error.message;
             }
+        }
+        
+        // 음악 추천 표시
+        function displayMusicRecommendations(musicList) {
+            const musicDiv = document.getElementById('musicRecommendations');
+            const musicListDiv = document.getElementById('musicList');
+            
+            musicDiv.style.display = 'block';
+            
+            let html = '';
+            musicList.forEach((music, index) => {
+                html += `
+                    <div class="music-item" onclick="playTrack(${index})">
+                        <h4>🎵 ${music.title} - ${music.artist}</h4>
+                        <p><strong>분위기:</strong> ${music.mood}</p>
+                        <button onclick="event.stopPropagation(); playTrack(${index})" class="play-btn">
+                            ▶️ 재생하기
+                        </button>
+                    </div>
+                `;
+            });
+            
+            musicListDiv.innerHTML = html;
+        }
+        
+        // 트랙 재생
+        function playTrack(index) {
+            if (!currentPlaylist || currentPlaylist.length === 0) {
+                alert('재생할 음악이 없습니다.');
+                return;
+            }
+            
+            currentTrackIndex = index;
+            const track = currentPlaylist[index];
+            
+            if (!track.youtubeVideoId) {
+                alert('이 음악의 YouTube ID를 찾을 수 없습니다.');
+                return;
+            }
+            
+            // 플레이어 표시
+            showPlayer();
+            updatePlayerInfo(track, index);
+            
+            // YouTube Player 생성 또는 업데이트
+            if (player) {
+                player.loadVideoById(track.youtubeVideoId);
+            } else {
+                createYouTubePlayer(track.youtubeVideoId);
+            }
+            
+            // 활성 트랙 표시
+            updateActiveTrack(index);
+        }
+        
+        // YouTube Player 생성
+        function createYouTubePlayer(videoId) {
+            if (player) {
+                player.destroy();
+            }
+            
+            player = new YT.Player('player', {
+                height: '0',
+                width: '0',
+                videoId: videoId,
+                playerVars: {
+                    'autoplay': 1,
+                    'controls': 0,
+                    'disablekb': 1,
+                    'enablejsapi': 1,
+                    'fs': 0,
+                    'iv_load_policy': 3,
+                    'modestbranding': 1,
+                    'playsinline': 1,
+                    'rel': 0,
+                    'showinfo': 0
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+        
+        // Player 준비 완료
+        function onPlayerReady(event) {
+            console.log('YouTube Player 준비 완료');
+            isPlaying = true;
+            updatePlayPauseButton();
+        }
+        
+        // Player 상태 변경
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.PLAYING) {
+                isPlaying = true;
+            } else if (event.data === YT.PlayerState.PAUSED) {
+                isPlaying = false;
+            } else if (event.data === YT.PlayerState.ENDED) {
+                isPlaying = false;
+                // 자동으로 다음 곡 재생
+                playNext();
+            }
+            updatePlayPauseButton();
+        }
+        
+        // 플레이어 표시
+        function showPlayer() {
+            document.getElementById('musicPlayer').style.display = 'block';
+            document.body.style.paddingBottom = '120px'; // 플레이어 공간 확보
+        }
+        
+        // 플레이어 숨기기
+        function closePlayer() {
+            document.getElementById('musicPlayer').style.display = 'none';
+            document.body.style.paddingBottom = '0';
+            if (player) {
+                player.pauseVideo();
+            }
+        }
+        
+        // 플레이어 정보 업데이트
+        function updatePlayerInfo(track, index) {
+            document.getElementById('playerTitle').textContent = track.title;
+            document.getElementById('playerArtist').textContent = track.artist;
+            document.getElementById('playlistIndicator').textContent = `${index + 1}/${currentPlaylist.length}`;
+        }
+        
+        // 재생/일시정지 토글
+        function togglePlayPause() {
+            if (!player) return;
+            
+            if (isPlaying) {
+                player.pauseVideo();
+            } else {
+                player.playVideo();
+            }
+        }
+        
+        // 이전 곡
+        function playPrevious() {
+            if (currentTrackIndex > 0) {
+                playTrack(currentTrackIndex - 1);
+            }
+        }
+        
+        // 다음 곡
+        function playNext() {
+            if (currentTrackIndex < currentPlaylist.length - 1) {
+                playTrack(currentTrackIndex + 1);
+            }
+        }
+        
+        // 재생/일시정지 버튼 업데이트
+        function updatePlayPauseButton() {
+            const btn = document.getElementById('playPauseBtn');
+            btn.textContent = isPlaying ? '⏸' : '▶';
+        }
+        
+        // 활성 트랙 표시
+        function updateActiveTrack(index) {
+            const musicItems = document.querySelectorAll('.music-item');
+            musicItems.forEach((item, i) => {
+                if (i === index) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
         }
         
         // 페이지 언로드 시 폴링 중지

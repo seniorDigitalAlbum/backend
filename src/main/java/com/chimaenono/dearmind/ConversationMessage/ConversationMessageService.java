@@ -100,4 +100,21 @@ public class ConversationMessageService {
         }
         return false;
     }
+    
+    @Operation(summary = "AI 메시지 저장", description = "GPT가 생성한 답변을 AI 메시지로 저장")
+    @Transactional
+    public ConversationMessageResponse saveAIMessage(Long conversationId, String aiResponse) {
+        // ConversationMessage 엔티티 생성
+        ConversationMessage message = new ConversationMessage();
+        message.setConversationId(conversationId);
+        message.setContent(aiResponse);
+        message.setSenderType(ConversationMessage.SenderType.AI);
+        message.setTimestamp(LocalDateTime.now());
+        
+        // 데이터베이스에 저장
+        ConversationMessage savedMessage = conversationMessageRepository.save(message);
+        
+        // Response DTO로 변환하여 반환
+        return ConversationMessageResponse.from(savedMessage);
+    }
 }

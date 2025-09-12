@@ -26,4 +26,14 @@ public class TTSResponse {
     
     @Schema(description = "오류 메시지", example = "텍스트 변환 실패")
     private String error;
+    
+    // 성공 여부 확인 메서드
+    public boolean isSuccess() {
+        return "success".equals(status) && audioData != null && !audioData.isEmpty();
+    }
+    
+    // 오디오 데이터 getter (이미 @Data로 생성되지만 명시적으로 추가)
+    public String getAudioData() {
+        return audioData;
+    }
 } 

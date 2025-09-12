@@ -5,13 +5,20 @@ import org.springframework.stereotype.Service;
 
 import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
 import com.chimaenono.dearmind.conversationMessage.ConversationMessageRepository;
+import com.chimaenono.dearmind.question.Question;
+import com.chimaenono.dearmind.question.QuestionRepository;
+import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysis;
+import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysisRepository;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 @Tag(name = "Conversation Service", description = "대화 세션 관리 서비스")
@@ -22,6 +29,12 @@ public class ConversationService {
     
     @Autowired
     private ConversationMessageRepository conversationMessageRepository;
+    
+    @Autowired
+    private QuestionRepository questionRepository;
+    
+    @Autowired
+    private UserEmotionAnalysisRepository userEmotionAnalysisRepository;
     
     @Operation(summary = "대화 세션 생성", description = "새로운 대화 세션을 생성합니다")
     public Conversation createConversation(String userId, Long questionId, String cameraSessionId, String microphoneSessionId) {
@@ -179,6 +192,176 @@ public class ConversationService {
             message.setTimestamp(LocalDateTime.now().minusDays(sessionNumber).plusMinutes(i * 2));
             
             conversationMessageRepository.save(message);
+        }
+    }
+    
+    @Operation(summary = "대화 요약 정보 조회", description = "대화 세션의 요약 정보를 조회합니다")
+    public ConversationSummaryResponse getConversationSummary(Long conversationId) {
+        // 대화 세션 조회
+        Optional<Conversation> conversationOpt = conversationRepository.findById(conversationId);
+        if (conversationOpt.isEmpty()) {
+            throw new RuntimeException("대화 세션을 찾을 수 없습니다: " + conversationId);
+        }
+        
+        Conversation conversation = conversationOpt.get();
+        
+        // 질문 정보 조회
+        String questionText = "질문 정보 없음";
+        Optional<Question> questionOpt = questionRepository.findById(conversation.getQuestionId());
+        if (questionOpt.isPresent()) {
+            questionText = questionOpt.get().getContent();
+        }
+        
+        // 메시지 통계 계산
+        List<ConversationMessage> messages = conversationMessageRepository.findByConversationIdOrderByTimestampAsc(conversationId);
+        int totalMessageCount = messages.size();
+        int userMessageCount = (int) messages.stream()
+            .filter(msg -> msg.getSenderType() == ConversationMessage.SenderType.USER)
+            .count();
+        int aiMessageCount = totalMessageCount - userMessageCount;
+        
+        // 대화 지속 시간 계산
+        Long duration = null;
+        if (conversation.getEndedAt() != null) {
+            duration = ChronoUnit.SECONDS.between(conversation.getCreatedAt(), conversation.getEndedAt());
+        }
+        
+        // 감정 분석 요약 생성
+        ConversationSummaryResponse.EmotionSummary emotionSummary = createEmotionSummary(conversationId);
+        
+        // 응답 객체 생성
+        ConversationSummaryResponse response = new ConversationSummaryResponse();
+        response.setConversationId(conversationId);
+        response.setUserId(conversation.getUserId());
+        response.setQuestion(questionText);
+        response.setStartTime(conversation.getCreatedAt());
+        response.setEndTime(conversation.getEndedAt());
+        response.setDuration(duration);
+        response.setStatus(conversation.getStatus().toString());
+        response.setTotalMessageCount(totalMessageCount);
+        response.setUserMessageCount(userMessageCount);
+        response.setAiMessageCount(aiMessageCount);
+        response.setEmotionSummary(emotionSummary);
+        
+        return response;
+    }
+    
+    private ConversationSummaryResponse.EmotionSummary createEmotionSummary(Long conversationId) {
+        // 해당 대화의 모든 감정 분석 결과 조회
+        List<UserEmotionAnalysis> emotionAnalyses = userEmotionAnalysisRepository.findByConversationMessageConversationIdOrderByAnalysisTimestampAsc(conversationId);
+        
+        if (emotionAnalyses.isEmpty()) {
+            // 감정 분석 데이터가 없는 경우
+            ConversationSummaryResponse.EmotionSummary summary = new ConversationSummaryResponse.EmotionSummary();
+            summary.setDominantEmotion("분석 없음");
+            summary.setEmotionCounts(new HashMap<>());
+            summary.setAverageConfidence(0.0);
+            summary.setAnalyzedMessageCount(0);
+            return summary;
+        }
+        
+        // 감정별 개수 계산
+        Map<String, Integer> emotionCounts = new HashMap<>();
+        double totalConfidence = 0.0;
+        int analyzedCount = 0;
+        
+        for (UserEmotionAnalysis analysis : emotionAnalyses) {
+            if (analysis.getCombinedEmotion() != null && !analysis.getCombinedEmotion().isEmpty()) {
+                String emotion = analysis.getCombinedEmotion();
+                emotionCounts.put(emotion, emotionCounts.getOrDefault(emotion, 0) + 1);
+                
+                if (analysis.getCombinedConfidence() != null) {
+                    totalConfidence += analysis.getCombinedConfidence();
+                    analyzedCount++;
+                }
+            }
+        }
+        
+        // 주요 감정 찾기
+        String dominantEmotion = "중립";
+        int maxCount = 0;
+        for (Map.Entry<String, Integer> entry : emotionCounts.entrySet()) {
+            if (entry.getValue() > maxCount) {
+                maxCount = entry.getValue();
+                dominantEmotion = entry.getKey();
+            }
+        }
+        
+        // 평균 신뢰도 계산
+        double averageConfidence = analyzedCount > 0 ? totalConfidence / analyzedCount : 0.0;
+        
+        // 응답 객체 생성
+        ConversationSummaryResponse.EmotionSummary summary = new ConversationSummaryResponse.EmotionSummary();
+        summary.setDominantEmotion(dominantEmotion);
+        summary.setEmotionCounts(emotionCounts);
+        summary.setAverageConfidence(averageConfidence);
+        summary.setAnalyzedMessageCount(emotionAnalyses.size());
+        
+        return summary;
+    }
+    
+    @Operation(summary = "대화 요약 저장", description = "생성된 대화 요약을 저장합니다")
+    public void saveConversationSummary(Long conversationId, String summary) {
+        Optional<Conversation> conversationOpt = conversationRepository.findById(conversationId);
+        if (conversationOpt.isPresent()) {
+            Conversation conversation = conversationOpt.get();
+            conversation.setSummary(summary);
+            conversationRepository.save(conversation);
+        }
+    }
+    
+    @Operation(summary = "대화 일기 저장", description = "생성된 일기를 저장합니다")
+    public void saveConversationDiary(Long conversationId, String diary) {
+        Optional<Conversation> conversationOpt = conversationRepository.findById(conversationId);
+        if (conversationOpt.isPresent()) {
+            Conversation conversation = conversationOpt.get();
+            conversation.setDiary(diary);
+            conversationRepository.save(conversation);
+        }
+    }
+    
+    @Operation(summary = "처리 상태 업데이트", description = "대화의 처리 상태를 업데이트합니다")
+    public void updateProcessingStatus(Long conversationId, Conversation.ProcessingStatus status) {
+        Optional<Conversation> conversationOpt = conversationRepository.findById(conversationId);
+        if (conversationOpt.isPresent()) {
+            Conversation conversation = conversationOpt.get();
+            conversation.setProcessingStatus(status);
+            conversationRepository.save(conversation);
+        }
+    }
+    
+    @Operation(summary = "처리 상태 조회", description = "대화의 처리 상태를 조회합니다")
+    public Conversation.ProcessingStatus getProcessingStatus(Long conversationId) {
+        Optional<Conversation> conversationOpt = conversationRepository.findById(conversationId);
+        if (conversationOpt.isPresent()) {
+            return conversationOpt.get().getProcessingStatus();
+        }
+        return Conversation.ProcessingStatus.READY;
+    }
+    
+    @Operation(summary = "대화 종료 및 백그라운드 처리 시작", description = "대화를 종료하고 백그라운드에서 요약 및 일기 생성을 시작합니다")
+    public Conversation endConversationAndStartProcessing(Long conversationId) {
+        Optional<Conversation> conversationOpt = conversationRepository.findById(conversationId);
+        if (conversationOpt.isPresent()) {
+            Conversation conversation = conversationOpt.get();
+            conversation.setStatus(Conversation.ConversationStatus.COMPLETED);
+            conversation.setEndedAt(LocalDateTime.now());
+            conversation.setProcessingStatus(Conversation.ProcessingStatus.READY);
+            return conversationRepository.save(conversation);
+        }
+        return null;
+    }
+    
+    @Operation(summary = "대화 감정 분석 결과 저장", description = "대화의 통합된 감정 분석 결과를 저장합니다")
+    public void saveConversationEmotionAnalysis(Long conversationId, String dominantEmotion, 
+                                               Double emotionConfidence, String emotionDistribution) {
+        Optional<Conversation> conversationOpt = conversationRepository.findById(conversationId);
+        if (conversationOpt.isPresent()) {
+            Conversation conversation = conversationOpt.get();
+            conversation.setDominantEmotion(dominantEmotion);
+            conversation.setEmotionConfidence(emotionConfidence);
+            conversation.setEmotionDistribution(emotionDistribution);
+            conversationRepository.save(conversation);
         }
     }
 } 

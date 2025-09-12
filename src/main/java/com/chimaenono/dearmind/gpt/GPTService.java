@@ -1,10 +1,16 @@
 package com.chimaenono.dearmind.gpt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+
+import com.chimaenono.dearmind.conversation.ConversationService;
+import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
+import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysis;
+import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysisRepository;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -13,6 +19,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 @Service
 public class GPTService {
@@ -34,6 +41,12 @@ public class GPTService {
     
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
+    
+    @Autowired
+    private ConversationService conversationService;
+    
+    @Autowired
+    private UserEmotionAnalysisRepository userEmotionAnalysisRepository;
     
     public GPTService() {
         this.httpClient = HttpClient.newBuilder()
@@ -143,5 +156,255 @@ public class GPTService {
         }
         
         return gptResponse.getChoices().get(0).getMessage().getContent();
+    }
+    
+    /**
+     * 대화 내용을 요약합니다.
+     */
+    public String generateConversationSummary(Long conversationId, Integer summaryLength) throws Exception {
+        // 대화 메시지 조회
+        List<ConversationMessage> messages = conversationService.getMessagesByConversationId(conversationId);
+        
+        if (messages.isEmpty()) {
+            throw new RuntimeException("대화 메시지를 찾을 수 없습니다: " + conversationId);
+        }
+        
+        // 대화 내용 구성
+        StringBuilder conversationBuilder = new StringBuilder();
+        for (ConversationMessage message : messages) {
+            String sender = message.getSenderType() == ConversationMessage.SenderType.USER ? "사용자" : "시스템";
+            conversationBuilder.append(sender).append(": ").append(message.getContent()).append("\n");
+        }
+        
+        // 프롬프트 구성
+        StringBuilder promptBuilder = new StringBuilder();
+        promptBuilder.append("**[지시]**\n");
+        promptBuilder.append("다음은 사용자와 시스템의 대화 내용이야.\n");
+        promptBuilder.append("이 대화의 핵심적인 주제와 사용자의 감정 변화에 초점을 맞춰서 ").append(summaryLength).append("자 내외로 요약해줘.\n\n");
+        
+        promptBuilder.append("**[대화 내용]**\n");
+        promptBuilder.append(conversationBuilder.toString());
+        
+        // GPT 요청 생성
+        GPTRequest gptRequest = new GPTRequest();
+        gptRequest.setModel(defaultModel);
+        gptRequest.setMax_tokens(200); // 요약이므로 토큰 수를 줄임
+        gptRequest.setTemperature(0.3); // 요약이므로 창의성보다는 정확성에 중점
+        gptRequest.setStream(false);
+        
+        // 메시지 구성
+        GPTMessage systemMessage = new GPTMessage("system", promptBuilder.toString());
+        GPTMessage userMessage = new GPTMessage("user", "대화 내용을 요약해줘.");
+        
+        gptRequest.setMessages(List.of(systemMessage, userMessage));
+        
+        // GPT API 호출
+        GPTResponse gptResponse = generateResponse(gptRequest);
+        
+        if (gptResponse.getChoices() == null || gptResponse.getChoices().isEmpty()) {
+            throw new RuntimeException("GPT API 응답에 선택지가 없습니다.");
+        }
+        
+        return gptResponse.getChoices().get(0).getMessage().getContent();
+    }
+    
+    /**
+     * 대화 내용을 요약하고 데이터베이스에 저장합니다.
+     */
+    public String generateAndSaveConversationSummary(Long conversationId, Integer summaryLength) throws Exception {
+        // 대화 메시지 조회
+        List<ConversationMessage> messages = conversationService.getMessagesByConversationId(conversationId);
+        
+        if (messages.isEmpty()) {
+            throw new RuntimeException("대화 메시지를 찾을 수 없습니다: " + conversationId);
+        }
+        
+        // 대화 내용 구성
+        StringBuilder conversationBuilder = new StringBuilder();
+        for (ConversationMessage message : messages) {
+            String sender = message.getSenderType() == ConversationMessage.SenderType.USER ? "사용자" : "시스템";
+            conversationBuilder.append(sender).append(": ").append(message.getContent()).append("\n");
+        }
+        
+        // 프롬프트 구성
+        StringBuilder promptBuilder = new StringBuilder();
+        promptBuilder.append("**[지시]**\n");
+        promptBuilder.append("다음은 사용자와 시스템의 대화 내용이야.\n");
+        promptBuilder.append("이 대화의 핵심적인 주제와 사용자의 감정 변화에 초점을 맞춰서 ").append(summaryLength).append("자 내외로 요약해줘.\n\n");
+        
+        promptBuilder.append("**[대화 내용]**\n");
+        promptBuilder.append(conversationBuilder.toString());
+        
+        // GPT 요청 생성
+        GPTRequest gptRequest = new GPTRequest();
+        gptRequest.setModel(defaultModel);
+        gptRequest.setMax_tokens(200);
+        gptRequest.setTemperature(0.3);
+        gptRequest.setStream(false);
+        
+        // 메시지 구성
+        GPTMessage systemMessage = new GPTMessage("system", promptBuilder.toString());
+        GPTMessage userMessage = new GPTMessage("user", "대화 내용을 요약해줘.");
+        
+        gptRequest.setMessages(List.of(systemMessage, userMessage));
+        
+        // GPT API 호출
+        GPTResponse gptResponse = generateResponse(gptRequest);
+        
+        if (gptResponse.getChoices() == null || gptResponse.getChoices().isEmpty()) {
+            throw new RuntimeException("GPT API 응답에 선택지가 없습니다.");
+        }
+        
+        String summary = gptResponse.getChoices().get(0).getMessage().getContent();
+        
+        // 데이터베이스에 요약 저장
+        conversationService.saveConversationSummary(conversationId, summary);
+        
+        return summary;
+    }
+    
+    /**
+     * 요약된 대화 내용과 감정 분석 결과를 바탕으로 일기를 생성하고 저장합니다.
+     */
+    public String generateAndSaveDiary(Long conversationId, String summary) throws Exception {
+        // 감정 분석 결과 조회
+        List<UserEmotionAnalysis> emotions = userEmotionAnalysisRepository.findByConversationMessageConversationIdOrderByAnalysisTimestampAsc(conversationId);
+        
+        // 감정 요약 생성 및 저장
+        String emotionSummary = createEmotionSummary(emotions);
+        
+        // 통합된 감정 분석 결과를 Conversation 테이블에 저장
+        saveConversationEmotionAnalysis(conversationId, emotions);
+        
+        // 프롬프트 구성
+        StringBuilder promptBuilder = new StringBuilder();
+        promptBuilder.append("**[역할 설정]**\n");
+        promptBuilder.append("너는 사용자의 대화 내용을 바탕으로 따뜻하고 공감적인 일기를 작성하는 AI야.\n\n");
+        
+        promptBuilder.append("**[대화 요약]**\n");
+        promptBuilder.append(summary).append("\n\n");
+        
+        promptBuilder.append("**[감정 분석 결과]**\n");
+        promptBuilder.append(emotionSummary).append("\n\n");
+        
+        promptBuilder.append("**[지시]**\n");
+        promptBuilder.append("위의 대화 요약과 감정 분석 결과를 바탕으로 사용자의 마음을 담은 일기를 작성해줘.\n");
+        promptBuilder.append("- 사용자의 감정과 경험을 공감적으로 표현해줘\n");
+        promptBuilder.append("- 따뜻하고 위로가 되는 톤으로 작성해줘\n");
+        promptBuilder.append("- 200-300자 내외로 작성해줘\n");
+        promptBuilder.append("- 일기 형식으로 작성해줘 (예: 오늘은...)\n");
+        
+        // GPT 요청 생성
+        GPTRequest gptRequest = new GPTRequest();
+        gptRequest.setModel(defaultModel);
+        gptRequest.setMax_tokens(400);
+        gptRequest.setTemperature(0.7);
+        gptRequest.setStream(false);
+        
+        // 메시지 구성
+        GPTMessage systemMessage = new GPTMessage("system", promptBuilder.toString());
+        GPTMessage userMessage = new GPTMessage("user", "일기를 작성해줘.");
+        
+        gptRequest.setMessages(List.of(systemMessage, userMessage));
+        
+        // GPT API 호출
+        GPTResponse gptResponse = generateResponse(gptRequest);
+        
+        if (gptResponse.getChoices() == null || gptResponse.getChoices().isEmpty()) {
+            throw new RuntimeException("GPT API 응답에 선택지가 없습니다.");
+        }
+        
+        String diary = gptResponse.getChoices().get(0).getMessage().getContent();
+        
+        // 데이터베이스에 일기 저장
+        conversationService.saveConversationDiary(conversationId, diary);
+        
+        return diary;
+    }
+    
+    /**
+     * 감정 분석 결과를 요약합니다.
+     */
+    private String createEmotionSummary(List<UserEmotionAnalysis> emotions) {
+        if (emotions.isEmpty()) {
+            return "감정 분석 결과가 없습니다.";
+        }
+        
+        Map<String, Integer> emotionCounts = new HashMap<>();
+        double totalConfidence = 0.0;
+        int analyzedCount = 0;
+        
+        for (UserEmotionAnalysis emotion : emotions) {
+            if (emotion.getCombinedEmotion() != null && !emotion.getCombinedEmotion().isEmpty()) {
+                String emotionType = emotion.getCombinedEmotion();
+                emotionCounts.put(emotionType, emotionCounts.getOrDefault(emotionType, 0) + 1);
+                
+                if (emotion.getCombinedConfidence() != null) {
+                    totalConfidence += emotion.getCombinedConfidence();
+                    analyzedCount++;
+                }
+            }
+        }
+        
+        // 주요 감정 찾기
+        String dominantEmotion = "중립";
+        int maxCount = 0;
+        for (Map.Entry<String, Integer> entry : emotionCounts.entrySet()) {
+            if (entry.getValue() > maxCount) {
+                maxCount = entry.getValue();
+                dominantEmotion = entry.getKey();
+            }
+        }
+        
+        // 평균 신뢰도 계산
+        double averageConfidence = analyzedCount > 0 ? totalConfidence / analyzedCount : 0.0;
+        
+        return String.format("주요 감정: %s, 평균 신뢰도: %.2f, 감정 분포: %s", 
+            dominantEmotion, averageConfidence, emotionCounts.toString());
+    }
+    
+    /**
+     * 통합된 감정 분석 결과를 Conversation 테이블에 저장합니다.
+     */
+    private void saveConversationEmotionAnalysis(Long conversationId, List<UserEmotionAnalysis> emotions) {
+        if (emotions.isEmpty()) {
+            conversationService.saveConversationEmotionAnalysis(conversationId, "중립", 0.0, "{}");
+            return;
+        }
+        
+        Map<String, Integer> emotionCounts = new HashMap<>();
+        double totalConfidence = 0.0;
+        int analyzedCount = 0;
+        
+        for (UserEmotionAnalysis emotion : emotions) {
+            if (emotion.getCombinedEmotion() != null && !emotion.getCombinedEmotion().isEmpty()) {
+                String emotionType = emotion.getCombinedEmotion();
+                emotionCounts.put(emotionType, emotionCounts.getOrDefault(emotionType, 0) + 1);
+                
+                if (emotion.getCombinedConfidence() != null) {
+                    totalConfidence += emotion.getCombinedConfidence();
+                    analyzedCount++;
+                }
+            }
+        }
+        
+        // 주요 감정 찾기
+        String dominantEmotion = "중립";
+        int maxCount = 0;
+        for (Map.Entry<String, Integer> entry : emotionCounts.entrySet()) {
+            if (entry.getValue() > maxCount) {
+                maxCount = entry.getValue();
+                dominantEmotion = entry.getKey();
+            }
+        }
+        
+        // 평균 신뢰도 계산
+        double averageConfidence = analyzedCount > 0 ? totalConfidence / analyzedCount : 0.0;
+        
+        // JSON 형태로 감정 분포 저장
+        String emotionDistribution = emotionCounts.toString();
+        
+        // Conversation 테이블에 저장
+        conversationService.saveConversationEmotionAnalysis(conversationId, dominantEmotion, averageConfidence, emotionDistribution);
     }
 }

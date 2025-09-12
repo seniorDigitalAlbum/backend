@@ -29,8 +29,6 @@ public class CameraSession {
     @Schema(description = "사용자 ID", example = "user_123")
     private String userId;
     
-
-    
     @Column(name = "status")
     @Schema(description = "카메라 상태", example = "ACTIVE")
     private String status; // ACTIVE, INACTIVE, RECORDING

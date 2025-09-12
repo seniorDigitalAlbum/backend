@@ -1,8 +1,6 @@
 package com.chimaenono.dearmind.gpt;
 
 import com.chimaenono.dearmind.conversation.ConversationContextService;
-import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
-import com.chimaenono.dearmind.conversationMessage.ConversationMessageRepository;
 import com.chimaenono.dearmind.conversationMessage.ConversationMessageResponse;
 import com.chimaenono.dearmind.conversationMessage.ConversationMessageService;
 import com.chimaenono.dearmind.tts.TTSRequest;
@@ -40,8 +38,6 @@ public class GPTController {
     @Autowired
     private ConversationMessageService conversationMessageService;
     
-    @Autowired
-    private ConversationMessageRepository conversationMessageRepository;
     
     @Autowired
     private TTSService ttsService;
@@ -187,6 +183,36 @@ public class GPTController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ConversationGenerateResponse.error("대화 생성 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/conversation-summary")
+    @Operation(summary = "대화 내용 요약", description = "GPT를 사용하여 대화 내용을 요약합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "대화 요약 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "404", description = "대화 세션을 찾을 수 없음"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<ConversationSummaryResponse> generateConversationSummary(
+            @Valid @RequestBody ConversationSummaryRequest request) {
+        try {
+            String summary = gptService.generateConversationSummary(
+                request.getConversationId(), 
+                request.getSummaryLength()
+            );
+            
+            ConversationSummaryResponse response = ConversationSummaryResponse.success(
+                request.getConversationId(),
+                summary,
+                request.getSummaryLength()
+            );
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ConversationSummaryResponse.error("대화 요약 중 오류가 발생했습니다: " + e.getMessage()));
         }
     }
 }

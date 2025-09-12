@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대화 요약 테스트</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .section h2 {
+            color: #555;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        input, select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: inline-block;
+            width: 150px;
+            font-weight: bold;
+            color: #555;
+        }
+        .json-display {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 대화 요약 GPT API 테스트</h1>
+        
+        <!-- 대화 요약 테스트 섹션 -->
+        <div class="section">
+            <h2>📝 대화 내용 요약</h2>
+            <p>GPT를 사용하여 대화 내용을 요약합니다.</p>
+            
+            <div class="form-group">
+                <label>대화 세션 ID:</label>
+                <input type="number" id="conversationId" placeholder="예: 1" value="1">
+            </div>
+            
+            <div class="form-group">
+                <label>요약 길이:</label>
+                <input type="number" id="summaryLength" placeholder="예: 50" value="50" min="10" max="200">
+                <span style="color: #666; font-size: 12px;">(문자 수)</span>
+            </div>
+            
+            <button onclick="generateConversationSummary()">📋 대화 요약 생성</button>
+            <button onclick="clearResults()">🗑️ 결과 지우기</button>
+            
+            <div id="summaryResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <!-- 더미 데이터 생성 섹션 -->
+        <div class="section">
+            <h2>🎭 더미 데이터 생성</h2>
+            <p>테스트용 더미 대화 데이터를 생성합니다.</p>
+            
+            <div class="form-group">
+                <label>사용자 ID:</label>
+                <input type="text" id="dummyUserId" placeholder="예: user123" value="user123">
+            </div>
+            
+            <button onclick="createDummyData()">🎪 더미 데이터 생성</button>
+            <button onclick="clearResults()">🗑️ 결과 지우기</button>
+            
+            <div id="dummyResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <!-- 대화 목록 조회 섹션 -->
+        <div class="section">
+            <h2>📋 대화 목록 조회</h2>
+            <p>사용자의 대화 목록을 조회합니다.</p>
+            
+            <div class="form-group">
+                <label>사용자 ID:</label>
+                <input type="text" id="listUserId" placeholder="예: user123" value="user123">
+            </div>
+            
+            <button onclick="getConversationList()">📋 대화 목록 조회</button>
+            <button onclick="clearResults()">🗑️ 결과 지우기</button>
+            
+            <div id="listResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080';
+        
+        async function generateConversationSummary() {
+            const conversationId = document.getElementById('conversationId').value;
+            const summaryLength = document.getElementById('summaryLength').value;
+            const resultDiv = document.getElementById('summaryResult');
+            
+            if (!conversationId) {
+                showResult(resultDiv, '❌ 대화 세션 ID를 입력해주세요.', 'error');
+                return;
+            }
+            
+            try {
+                showResult(resultDiv, '⏳ 대화 요약을 생성 중입니다...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/api/gpt/conversation-summary`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        conversationId: parseInt(conversationId),
+                        summaryLength: parseInt(summaryLength) || 50
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    let resultText = `✅ 성공!\n\n` +
+                        `대화 세션 ID: ${data.conversationId}\n` +
+                        `요약 길이: ${data.summaryLength}자\n` +
+                        `실제 길이: ${data.summary.length}자\n\n` +
+                        `📝 요약 내용:\n${data.summary}\n\n` +
+                        `📊 전체 응답:\n${JSON.stringify(data, null, 2)}`;
+                    
+                    showResult(resultDiv, resultText, 'success');
+                } else {
+                    showResult(resultDiv, `❌ 오류: ${data.message || '알 수 없는 오류가 발생했습니다.'}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `❌ 네트워크 오류: ${error.message}`, 'error');
+            }
+        }
+        
+        async function createDummyData() {
+            const userId = document.getElementById('dummyUserId').value;
+            const resultDiv = document.getElementById('dummyResult');
+            
+            if (!userId) {
+                showResult(resultDiv, '❌ 사용자 ID를 입력해주세요.', 'error');
+                return;
+            }
+            
+            try {
+                showResult(resultDiv, '⏳ 더미 데이터를 생성 중입니다...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/api/conversations/dummy/${userId}`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.text();
+                
+                if (response.ok) {
+                    showResult(resultDiv, `✅ 성공!\n\n${data}`, 'success');
+                } else {
+                    showResult(resultDiv, `❌ 오류: ${data}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `❌ 네트워크 오류: ${error.message}`, 'error');
+            }
+        }
+        
+        async function getConversationList() {
+            const userId = document.getElementById('listUserId').value;
+            const resultDiv = document.getElementById('listResult');
+            
+            if (!userId) {
+                showResult(resultDiv, '❌ 사용자 ID를 입력해주세요.', 'error');
+                return;
+            }
+            
+            try {
+                showResult(resultDiv, '⏳ 대화 목록을 조회 중입니다...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/api/conversations/user/${userId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let resultText = `✅ 성공!\n\n` +
+                        `총 ${data.length}개의 대화를 찾았습니다.\n\n`;
+                    
+                    data.forEach((conversation, index) => {
+                        resultText += `${index + 1}. 대화 ID: ${conversation.id}\n` +
+                            `   상태: ${conversation.status}\n` +
+                            `   시작: ${conversation.createdAt}\n` +
+                            `   종료: ${conversation.endedAt || '진행 중'}\n\n`;
+                    });
+                    
+                    resultText += `📊 전체 응답:\n${JSON.stringify(data, null, 2)}`;
+                    
+                    showResult(resultDiv, resultText, 'success');
+                } else {
+                    showResult(resultDiv, `❌ 오류: ${data.message || '알 수 없는 오류가 발생했습니다.'}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `❌ 네트워크 오류: ${error.message}`, 'error');
+            }
+        }
+        
+        function showResult(element, message, type) {
+            element.textContent = message;
+            element.className = `result ${type}`;
+            element.style.display = 'block';
+        }
+        
+        function clearResults() {
+            document.getElementById('summaryResult').style.display = 'none';
+            document.getElementById('dummyResult').style.display = 'none';
+            document.getElementById('listResult').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

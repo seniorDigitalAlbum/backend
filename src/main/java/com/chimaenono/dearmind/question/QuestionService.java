@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PostConstruct;
 import java.util.Arrays;
 import java.util.List;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.event.EventListener;
 
 @Service
 @Tag(name = "Question Service", description = "회상요법 질문 관련 서비스")
@@ -16,11 +18,17 @@ public class QuestionService {
     @Autowired
     private QuestionRepository questionRepository;
 
-    @PostConstruct
+    @EventListener(ContextRefreshedEvent.class)
     @Operation(summary = "질문 초기화", description = "애플리케이션 시작 시 하드코딩된 회상요법 질문들을 데이터베이스에 저장")
     public void initializeQuestions() {
-        // 이미 질문이 있으면 초기화하지 않음
-        if (questionRepository.count() > 0) {
+        try {
+            // 이미 질문이 있으면 초기화하지 않음
+            if (questionRepository.count() > 0) {
+                return;
+            }
+        } catch (Exception e) {
+            // 테이블이 아직 생성되지 않았거나 다른 오류가 발생한 경우
+            System.out.println("Questions table not ready yet, skipping initialization: " + e.getMessage());
             return;
         }
 

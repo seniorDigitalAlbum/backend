@@ -47,7 +47,36 @@ public class Conversation {
     @Schema(description = "대화 종료 시간")
     private LocalDateTime endedAt;
     
+    @Column(name = "summary", columnDefinition = "TEXT")
+    @Schema(description = "대화 내용 요약", example = "사용자가 어린 시절 추억을 이야기하며...")
+    private String summary;
+    
+    @Column(name = "diary", columnDefinition = "TEXT")
+    @Schema(description = "생성된 일기 내용", example = "오늘은 정말 특별한 하루였습니다...")
+    private String diary;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "processing_status")
+    @Schema(description = "처리 상태", example = "READY")
+    private ProcessingStatus processingStatus;
+    
+    @Column(name = "dominant_emotion")
+    @Schema(description = "주요 감정", example = "기쁨")
+    private String dominantEmotion;
+    
+    @Column(name = "emotion_confidence")
+    @Schema(description = "감정 신뢰도", example = "0.85")
+    private Double emotionConfidence;
+    
+    @Column(name = "emotion_distribution", columnDefinition = "JSON")
+    @Schema(description = "감정 분포", example = "{\"기쁨\": 4, \"슬픔\": 1}")
+    private String emotionDistribution;
+    
     public enum ConversationStatus {
         ACTIVE, COMPLETED, PAUSED
+    }
+    
+    public enum ProcessingStatus {
+        READY, PROCESSING, COMPLETED, ERROR
     }
 } 

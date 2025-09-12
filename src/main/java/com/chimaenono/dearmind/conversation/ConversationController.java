@@ -5,6 +5,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
+import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysis;
+import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysisRepository;
+import com.chimaenono.dearmind.music.MusicRecommendation;
+import com.chimaenono.dearmind.music.MusicRecommendationService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +18,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 @RestController
 @RequestMapping("/api/conversations")
@@ -26,6 +34,15 @@ public class ConversationController {
     
     @Autowired
     private ConversationContextService conversationContextService;
+    
+    @Autowired
+    private AsyncService asyncService;
+    
+    @Autowired
+    private UserEmotionAnalysisRepository userEmotionAnalysisRepository;
+    
+    @Autowired
+    private MusicRecommendationService musicRecommendationService;
     
     @PostMapping
     @Operation(summary = "대화 세션 생성", description = "새로운 대화 세션을 생성합니다")
@@ -114,19 +131,42 @@ public class ConversationController {
     }
     
     @PutMapping("/{conversationId}/end")
-    @Operation(summary = "대화 세션 종료", description = "대화 세션을 완료 상태로 변경합니다")
+    @Operation(summary = "대화 세션 종료", description = "대화 세션을 완료 상태로 변경하고 백그라운드에서 요약 및 일기 생성을 시작합니다")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "대화 세션 종료 성공"),
-        @ApiResponse(responseCode = "404", description = "대화 세션을 찾을 수 없음")
+        @ApiResponse(responseCode = "404", description = "대화 세션을 찾을 수 없음"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<Conversation> endConversation(
+    public ResponseEntity<ConversationEndResponse> endConversation(
             @Parameter(description = "대화 세션 ID", example = "1") @PathVariable Long conversationId) {
         
-        Conversation conversation = conversationService.endConversation(conversationId);
-        if (conversation != null) {
-            return ResponseEntity.ok(conversation);
-        } else {
-            return ResponseEntity.notFound().build();
+        try {
+            // 대화 종료 및 백그라운드 처리 시작
+            Conversation conversation = conversationService.endConversationAndStartProcessing(conversationId);
+            if (conversation == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            // 대화 메시지 조회
+            List<ConversationMessage> messages = conversationService.getMessagesByConversationId(conversationId);
+            
+            // 백그라운드에서 요약 및 일기 생성 시작
+            asyncService.generateSummaryAndDiary(conversationId);
+            
+            // 응답 생성
+            ConversationEndResponse response = ConversationEndResponse.success(
+                conversationId,
+                conversation.getStatus().toString(),
+                conversation.getProcessingStatus().toString(),
+                messages,
+                "일기 생성 중입니다..."
+            );
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(ConversationEndResponse.error("대화 종료 중 오류가 발생했습니다: " + e.getMessage()));
         }
     }
     
@@ -220,6 +260,122 @@ public class ConversationController {
         }
     }
     
+    @GetMapping("/{conversationId}/summary")
+    @Operation(summary = "대화 요약 정보 조회", description = "대화 세션의 요약 정보를 조회합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "대화 요약 정보 조회 성공"),
+        @ApiResponse(responseCode = "404", description = "대화 세션을 찾을 수 없음"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<ConversationSummaryResponse> getConversationSummary(
+            @Parameter(description = "대화 세션 ID", example = "1") @PathVariable Long conversationId) {
+        
+        try {
+            ConversationSummaryResponse summary = conversationService.getConversationSummary(conversationId);
+            return ResponseEntity.ok(summary);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
+    @GetMapping("/{conversationId}/processing-status")
+    @Operation(summary = "처리 상태 확인", description = "대화의 요약 및 일기 생성 처리 상태를 확인합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "처리 상태 조회 성공"),
+        @ApiResponse(responseCode = "404", description = "대화 세션을 찾을 수 없음"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<ProcessingStatusResponse> getProcessingStatus(
+            @Parameter(description = "대화 세션 ID", example = "1") @PathVariable Long conversationId) {
+        
+        try {
+            Conversation.ProcessingStatus status = conversationService.getProcessingStatus(conversationId);
+            
+            // 대화 세션이 존재하는지 확인
+            Optional<Conversation> conversationOpt = conversationService.getConversationById(conversationId);
+            if (conversationOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Conversation conversation = conversationOpt.get();
+            Boolean summaryCompleted = conversation.getSummary() != null && !conversation.getSummary().isEmpty();
+            Boolean diaryCompleted = conversation.getDiary() != null && !conversation.getDiary().isEmpty();
+            
+            String message = switch (status) {
+                case READY -> "처리 준비 중입니다.";
+                case PROCESSING -> "요약 및 일기 생성 중입니다...";
+                case COMPLETED -> "처리가 완료되었습니다.";
+                case ERROR -> "처리 중 오류가 발생했습니다.";
+            };
+            
+            ProcessingStatusResponse response = ProcessingStatusResponse.success(
+                conversationId, status.toString(), summaryCompleted, diaryCompleted, message
+            );
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(ProcessingStatusResponse.error("처리 상태 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/{conversationId}/diary")
+    @Operation(summary = "일기 조회", description = "생성된 일기와 요약 내용을 조회합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "일기 조회 성공"),
+        @ApiResponse(responseCode = "404", description = "대화 세션을 찾을 수 없음"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<DiaryResponse> getDiary(
+            @Parameter(description = "대화 세션 ID", example = "1") @PathVariable Long conversationId) {
+        
+        try {
+            // 대화 세션 조회
+            Optional<Conversation> conversationOpt = conversationService.getConversationById(conversationId);
+            if (conversationOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Conversation conversation = conversationOpt.get();
+            
+            // 일기가 생성되지 않은 경우
+            if (conversation.getDiary() == null || conversation.getDiary().isEmpty()) {
+                return ResponseEntity.status(400)
+                        .body(DiaryResponse.error("일기가 아직 생성되지 않았습니다."));
+            }
+            
+            // 저장된 감정 분석 결과 사용
+            DiaryResponse.EmotionSummary emotionSummary = createEmotionSummaryFromConversation(conversation);
+            
+            // 음악 추천 조회 또는 생성
+            List<MusicRecommendation> musicRecommendations = musicRecommendationService
+                .getOrGenerateMusicRecommendations(
+                    conversationId,
+                    conversation.getDiary(),
+                    conversation.getDominantEmotion(),
+                    conversation.getEmotionConfidence()
+                );
+            
+            DiaryResponse response = DiaryResponse.success(
+                conversationId,
+                conversation.getSummary(),
+                conversation.getDiary(),
+                emotionSummary,
+                musicRecommendations,
+                "일기를 성공적으로 조회했습니다."
+            );
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(DiaryResponse.error("일기 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+    
     @GetMapping("/health")
     @Operation(summary = "대화 서비스 상태 확인", description = "대화 서비스의 상태를 확인합니다")
     @ApiResponses(value = {
@@ -227,5 +383,98 @@ public class ConversationController {
     })
     public ResponseEntity<String> healthCheck() {
         return ResponseEntity.ok("Conversation service is running");
+    }
+    
+    /**
+     * 감정 분석 결과를 요약합니다.
+     */
+    private DiaryResponse.EmotionSummary createEmotionSummary(List<UserEmotionAnalysis> emotions) {
+        if (emotions.isEmpty()) {
+            DiaryResponse.EmotionSummary summary = new DiaryResponse.EmotionSummary();
+            summary.setDominantEmotion("중립");
+            summary.setEmotionCounts(Map.of());
+            summary.setAverageConfidence(0.0);
+            summary.setAnalyzedMessageCount(0);
+            return summary;
+        }
+        
+        Map<String, Integer> emotionCounts = new HashMap<>();
+        double totalConfidence = 0.0;
+        int analyzedCount = 0;
+        
+        for (UserEmotionAnalysis emotion : emotions) {
+            if (emotion.getCombinedEmotion() != null && !emotion.getCombinedEmotion().isEmpty()) {
+                String emotionType = emotion.getCombinedEmotion();
+                emotionCounts.put(emotionType, emotionCounts.getOrDefault(emotionType, 0) + 1);
+                
+                if (emotion.getCombinedConfidence() != null) {
+                    totalConfidence += emotion.getCombinedConfidence();
+                    analyzedCount++;
+                }
+            }
+        }
+        
+        // 주요 감정 찾기
+        String dominantEmotion = "중립";
+        int maxCount = 0;
+        for (Map.Entry<String, Integer> entry : emotionCounts.entrySet()) {
+            if (entry.getValue() > maxCount) {
+                maxCount = entry.getValue();
+                dominantEmotion = entry.getKey();
+            }
+        }
+        
+        // 평균 신뢰도 계산
+        double averageConfidence = analyzedCount > 0 ? totalConfidence / analyzedCount : 0.0;
+        
+        DiaryResponse.EmotionSummary summary = new DiaryResponse.EmotionSummary();
+        summary.setDominantEmotion(dominantEmotion);
+        summary.setEmotionCounts(emotionCounts);
+        summary.setAverageConfidence(averageConfidence);
+        summary.setAnalyzedMessageCount(emotions.size());
+        
+        return summary;
+    }
+    
+    /**
+     * Conversation에 저장된 감정 분석 결과를 EmotionSummary로 변환합니다.
+     */
+    private DiaryResponse.EmotionSummary createEmotionSummaryFromConversation(Conversation conversation) {
+        DiaryResponse.EmotionSummary summary = new DiaryResponse.EmotionSummary();
+        
+        if (conversation.getDominantEmotion() != null) {
+            summary.setDominantEmotion(conversation.getDominantEmotion());
+        } else {
+            summary.setDominantEmotion("중립");
+        }
+        
+        if (conversation.getEmotionConfidence() != null) {
+            summary.setAverageConfidence(conversation.getEmotionConfidence());
+        } else {
+            summary.setAverageConfidence(0.0);
+        }
+        
+        if (conversation.getEmotionDistribution() != null && !conversation.getEmotionDistribution().isEmpty()) {
+            // JSON 문자열을 Map으로 파싱
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                Map<String, Integer> emotionCounts = objectMapper.readValue(
+                    conversation.getEmotionDistribution(), 
+                    new TypeReference<Map<String, Integer>>() {}
+                );
+                summary.setEmotionCounts(emotionCounts);
+            } catch (Exception e) {
+                System.err.println("감정 분포 JSON 파싱 오류: " + e.getMessage());
+                summary.setEmotionCounts(Map.of());
+            }
+        } else {
+            summary.setEmotionCounts(Map.of());
+        }
+        
+        // 분석된 메시지 수는 감정 분포의 총합으로 계산
+        int totalMessages = summary.getEmotionCounts().values().stream().mapToInt(Integer::intValue).sum();
+        summary.setAnalyzedMessageCount(totalMessages);
+        
+        return summary;
     }
 } 

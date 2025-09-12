@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.time.LocalDateTime;
 
@@ -40,6 +41,7 @@ public class ConversationMessage {
     
     // 사용자 감정 분석 결과와의 1:1 관계 (USER 메시지에만 존재)
     @OneToOne(mappedBy = "conversationMessage", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore // 순환 참조 방지
     @Schema(description = "사용자 감정 분석 결과 (USER 메시지에만 존재)")
     private UserEmotionAnalysis emotionAnalysis;
     

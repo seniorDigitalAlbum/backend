@@ -44,6 +44,28 @@ public class ConversationController {
     @Autowired
     private MusicRecommendationService musicRecommendationService;
     
+    @PostMapping("/start")
+    @Operation(summary = "대화 시작 (통합)", description = "카메라 세션, 마이크 세션, 대화방을 통합으로 생성합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "대화 시작 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<ConversationStartResponse> startConversation(
+            @Parameter(description = "대화 시작 요청 데이터") @RequestBody ConversationStartRequest request) {
+        
+        try {
+            ConversationStartResponse response = conversationService.startConversation(request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(ConversationStartResponse.error("잘못된 요청: " + e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(ConversationStartResponse.error("대화 시작 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+    
     @PostMapping
     @Operation(summary = "대화 세션 생성", description = "새로운 대화 세션을 생성합니다")
     @ApiResponses(value = {

@@ -9,6 +9,8 @@ import com.chimaenono.dearmind.question.Question;
 import com.chimaenono.dearmind.question.QuestionRepository;
 import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysis;
 import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysisRepository;
+import com.chimaenono.dearmind.camera.CameraService;
+import com.chimaenono.dearmind.microphone.MicrophoneService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +37,55 @@ public class ConversationService {
     
     @Autowired
     private UserEmotionAnalysisRepository userEmotionAnalysisRepository;
+    
+    @Autowired
+    private CameraService cameraService;
+    
+    @Autowired
+    private MicrophoneService microphoneService;
+    
+    @Operation(summary = "통합 대화 시작", description = "카메라 세션, 마이크 세션, 대화방을 통합으로 생성합니다")
+    public ConversationStartResponse startConversation(ConversationStartRequest request) {
+        // 입력 검증
+        if (request.getUserId() == null || request.getUserId().trim().isEmpty()) {
+            throw new IllegalArgumentException("사용자 ID는 필수입니다.");
+        }
+        if (request.getQuestionId() == null) {
+            throw new IllegalArgumentException("질문 ID는 필수입니다.");
+        }
+        
+        // 질문 존재 여부 확인
+        Question question = questionRepository.findById(request.getQuestionId())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 질문 ID입니다: " + request.getQuestionId()));
+        
+        try {
+            // 1. 카메라 세션 생성
+            String cameraSessionId = cameraService.createSession(request.getUserId()).getSessionId();
+            
+            // 2. 마이크 세션 생성
+            String microphoneSessionId = microphoneService.createSession(request.getUserId(), "WAV", 44100).getSessionId();
+            
+            // 3. 대화방 생성
+            Conversation conversation = createConversation(
+                request.getUserId(), 
+                request.getQuestionId(), 
+                cameraSessionId, 
+                microphoneSessionId
+            );
+            
+            // 4. 응답 생성
+            return ConversationStartResponse.success(
+                conversation.getId(),
+                cameraSessionId,
+                microphoneSessionId,
+                conversation.getStatus().toString(),
+                question
+            );
+            
+        } catch (Exception e) {
+            throw new RuntimeException("대화 시작 중 오류가 발생했습니다: " + e.getMessage(), e);
+        }
+    }
     
     @Operation(summary = "대화 세션 생성", description = "새로운 대화 세션을 생성합니다")
     public Conversation createConversation(String userId, Long questionId, String cameraSessionId, String microphoneSessionId) {

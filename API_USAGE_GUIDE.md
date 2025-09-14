@@ -40,9 +40,9 @@ DearMind는 AI와의 대화를 통한 회상요법 서비스를 제공하는 백
 ### 발화 플로우 (한 번의 대화)
 ```mermaid
 graph TD
-    A[1. 발화 시작] --> B[2. 표정 감정 저장]
+    A[1. 발화 시작] --> B[2. STT 변환]
     B --> C[3. 발화 종료]
-    C --> D[4. STT + 사용자 말 저장]
+    C --> D[4. 표정 감정 저장]
     D --> E[5. 이전 발화 조회]
     E --> F[6. KoBERT 호출]
     F --> G[7. 말 감정 저장]
@@ -360,7 +360,7 @@ POST /api/gpt/generate
 }
 ```
 
-### 10. TTS 변환
+### 11. TTS 변환
 
 #### 엔드포인트
 ```
@@ -391,7 +391,7 @@ POST /api/tts/synthesize
 }
 ```
 
-### 11. 대화 종료
+### 12. 대화 종료
 
 #### 엔드포인트
 ```
@@ -422,7 +422,7 @@ PUT /api/conversations/{conversationId}/end
 }
 ```
 
-### 12. 처리 상태 확인
+### 13. 처리 상태 확인
 
 #### 엔드포인트
 ```
@@ -441,7 +441,7 @@ GET /api/conversations/{conversationId}/processing-status
 }
 ```
 
-### 13. 일기 조회
+### 14. 일기 조회
 
 #### 엔드포인트
 ```

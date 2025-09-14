@@ -279,13 +279,13 @@ public class MicrophoneController {
     @PostMapping("/speech/end")
     @Operation(
         summary = "발화 종료",
-        description = "사용자의 발화를 종료합니다. 마이크 세션 상태를 ACTIVE로 변경합니다."
+        description = "사용자의 발화를 종료합니다. 마이크 세션 상태를 ACTIVE로 변경하고 ConversationMessage를 생성합니다."
     )
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200",
             description = "발화 종료 성공",
-            content = @Content(schema = @Schema(implementation = Map.class))
+            content = @Content(schema = @Schema(implementation = SpeechEndResponse.class))
         ),
         @ApiResponse(
             responseCode = "400",
@@ -303,37 +303,20 @@ public class MicrophoneController {
             content = @Content(schema = @Schema(implementation = Map.class))
         )
     })
-    public ResponseEntity<Map<String, Object>> endSpeech(
-        @Parameter(description = "마이크 세션 ID", example = "microphone_session_456")
-        @RequestParam String microphoneSessionId,
-        @Parameter(description = "카메라 세션 ID", example = "camera_session_789")
-        @RequestParam String cameraSessionId,
-        @Parameter(description = "사용자 ID", example = "user123")
-        @RequestParam String userId
-    ) {
-        Map<String, Object> response = new HashMap<>();
+    public ResponseEntity<?> endSpeech(@RequestBody SpeechEndRequest request) {
         try {
-            boolean success = microphoneService.endSpeech(microphoneSessionId, cameraSessionId, userId);
-            if (success) {
-                response.put("status", "success");
-                response.put("message", "발화가 종료되었습니다.");
-                response.put("microphoneSessionId", microphoneSessionId);
-                response.put("cameraSessionId", cameraSessionId);
-                response.put("userId", userId);
-                return ResponseEntity.ok(response);
-            } else {
-                response.put("status", "error");
-                response.put("message", "발화 종료에 실패했습니다.");
-                return ResponseEntity.status(500).body(response);
-            }
+            SpeechEndResponse response = microphoneService.endSpeech(request);
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(400).body(response);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(400).body(errorResponse);
         } catch (Exception e) {
-            response.put("status", "error");
-            response.put("message", "발화 종료 중 오류가 발생했습니다: " + e.getMessage());
-            return ResponseEntity.status(500).body(response);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", "발화 종료 중 오류가 발생했습니다: " + e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
         }
     }
 

@@ -141,7 +141,67 @@ POST /api/microphone/speech/start
 }
 ```
 
-### 4. 표정 감정 분석 저장
+### 4. STT (Speech-to-Text) 변환
+
+#### 엔드포인트
+```
+POST /api/stt/transcribe
+```
+
+#### 요청
+```json
+{
+  "audioData": "base64_encoded_audio_data",
+  "format": "wav",
+  "language": "ko"
+}
+```
+
+#### 응답
+```json
+{
+  "text": "어릴 때 자주 했던 놀이는 숨바꼭질이었어요.",
+  "language": "ko",
+  "confidence": 0.95,
+  "duration": 2.3,
+  "status": "success",
+  "errorMessage": null
+}
+```
+
+### 5. 발화 종료
+
+#### 엔드포인트
+```
+POST /api/microphone/speech/end
+```
+
+#### 요청
+```json
+{
+  "userId": "user123",
+  "microphoneSessionId": "mic_456",
+  "cameraSessionId": "cam_123",
+  "conversationId": 1,
+  "userText": "어릴 때 자주 했던 놀이는 숨바꼭질이었어요."
+}
+```
+
+#### 응답
+```json
+{
+  "status": "success",
+  "message": "발화가 종료되었습니다.",
+  "conversationMessageId": 123,
+  "userText": "어릴 때 자주 했던 놀이는 숨바꼭질이었어요.",
+  "microphoneSessionId": "mic_456",
+  "cameraSessionId": "cam_123",
+  "userId": "user123",
+  "conversationId": 1
+}
+```
+
+### 6. 표정 감정 분석 저장
 
 #### 엔드포인트
 ```
@@ -192,34 +252,7 @@ POST /api/emotion-analysis/facial
 }
 ```
 
-### 5. 발화 종료 (STT만)
-
-#### 엔드포인트
-```
-POST /api/microphone/speech/end
-```
-
-#### 요청
-```json
-{
-  "microphoneSessionId": "mic_456",
-  "cameraSessionId": "cam_123",
-  "userId": "user123",
-  "audioData": "base64_encoded_audio_data"
-}
-```
-
-#### 응답
-```json
-{
-  "status": "success",
-  "message": "발화가 종료되었습니다.",
-  "conversationMessageId": 123,
-  "userText": "어릴 때 자주 했던 놀이는 숨바꼭질이었어요."
-}
-```
-
-### 6. 이전 발화 조회
+### 7. 이전 발화 조회
 
 #### 엔드포인트
 ```
@@ -238,7 +271,7 @@ GET /api/conversations/context/{conversationMessageId}
 }
 ```
 
-### 7. 말 감정 분석 저장
+### 8. 말 감정 분석 저장
 
 #### 엔드포인트
 ```
@@ -274,7 +307,7 @@ POST /api/emotion-analysis/speech
 }
 ```
 
-### 8. 통합 감정 저장
+### 9. 통합 감정 저장
 
 #### 엔드포인트
 ```
@@ -303,7 +336,7 @@ POST /api/emotion-analysis/combine
 }
 ```
 
-### 9. 다음 답변 생성
+### 10. 다음 답변 생성
 
 #### 엔드포인트
 ```
@@ -876,11 +909,3 @@ curl -X POST "http://localhost:8080/api/conversations/dummy/user123"
 4. **에러 처리**: 모든 API 호출에 적절한 에러 처리 구현
 5. **CORS**: 개발 환경에서 CORS 설정 확인
 
-## 지원
-
-문제가 발생하거나 추가 기능이 필요한 경우, 백엔드 개발자에게 문의하세요.
-
----
-
-**마지막 업데이트**: 2024년 1월 15일
-**API 버전**: v1.0

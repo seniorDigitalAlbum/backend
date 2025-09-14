@@ -256,14 +256,7 @@ POST /api/emotion-analysis/speech
   "conversationMessageId": 123,
   "emotion": "기쁨",
   "confidence": 0.78,
-  "speechEmotionData": {
-    "text": "어릴 때 자주 했던 놀이는 숨바꼭질이었어요.",
-    "analysisResult": {
-      "emotion": "기쁨",
-      "confidence": 0.78,
-      "details": {...}
-    }
-  }
+  "speechEmotionData": "{\"emotion\":\"기쁨\",\"confidence\":0.78,\"details\":{}}"
 }
 ```
 
@@ -272,10 +265,11 @@ POST /api/emotion-analysis/speech
 {
   "id": 1,
   "conversationMessageId": 123,
-  "speechEmotion": "기쁨",
-  "speechConfidence": 0.78,
-  "speechEmotionData": {...},
-  "createdAt": "2024-01-15T10:30:15"
+  "facialEmotion": null,
+  "speechEmotion": "{\"emotion\":\"기쁨\",\"confidence\":0.78}",
+  "combinedEmotion": null,
+  "combinedConfidence": null,
+  "analysisTimestamp": "2024-01-15T10:30:15"
 }
 ```
 

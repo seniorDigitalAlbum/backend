@@ -2,6 +2,8 @@ package com.chimaenono.dearmind.conversation;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
 import com.chimaenono.dearmind.conversationMessage.ConversationMessageRepository;
@@ -10,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.Optional;
+import java.util.List;
 
 @Service
 @Tag(name = "ConversationContext", description = "대화 컨텍스트 관리 서비스")
@@ -31,15 +34,16 @@ public class ConversationContextService {
             Long conversationId = currentMessage.getConversationId();
             String currUser = currentMessage.getContent();
             
-            // 2. 이전 사용자 메시지 조회
-            Optional<ConversationMessage> prevUserMessageOpt = conversationMessageRepository
-                .findPreviousUserMessage(conversationId, conversationMessageId);
-            String prevUser = prevUserMessageOpt.map(ConversationMessage::getContent).orElse(null);
+            // 2. 이전 사용자 메시지 조회 (가장 최근 1개만)
+            Pageable pageable = PageRequest.of(0, 1);
+            List<ConversationMessage> prevUserMessages = conversationMessageRepository
+                .findPreviousUserMessages(conversationId, conversationMessageId, pageable);
+            String prevUser = prevUserMessages.isEmpty() ? null : prevUserMessages.get(0).getContent();
             
-            // 3. 이전 AI 메시지 조회
-            Optional<ConversationMessage> prevSysMessageOpt = conversationMessageRepository
-                .findPreviousSystemMessage(conversationId, conversationMessageId);
-            String prevSys = prevSysMessageOpt.map(ConversationMessage::getContent).orElse(null);
+            // 3. 이전 AI 메시지 조회 (가장 최근 1개만)
+            List<ConversationMessage> prevSysMessages = conversationMessageRepository
+                .findPreviousSystemMessages(conversationId, conversationMessageId, pageable);
+            String prevSys = prevSysMessages.isEmpty() ? null : prevSysMessages.get(0).getContent();
             
             // 4. 응답 객체 생성
             return ConversationContextResponse.success(
@@ -67,12 +71,13 @@ public class ConversationContextService {
             Long conversationId = message.getConversationId();
             
             // 이전 메시지가 하나라도 있으면 컨텍스트가 존재
-            Optional<ConversationMessage> prevUserOpt = conversationMessageRepository
-                .findPreviousUserMessage(conversationId, conversationMessageId);
-            Optional<ConversationMessage> prevSysOpt = conversationMessageRepository
-                .findPreviousSystemMessage(conversationId, conversationMessageId);
+            Pageable pageable = PageRequest.of(0, 1);
+            List<ConversationMessage> prevUserMessages = conversationMessageRepository
+                .findPreviousUserMessages(conversationId, conversationMessageId, pageable);
+            List<ConversationMessage> prevSysMessages = conversationMessageRepository
+                .findPreviousSystemMessages(conversationId, conversationMessageId, pageable);
             
-            return prevUserOpt.isPresent() || prevSysOpt.isPresent();
+            return !prevUserMessages.isEmpty() || !prevSysMessages.isEmpty();
             
         } catch (Exception e) {
             return false;

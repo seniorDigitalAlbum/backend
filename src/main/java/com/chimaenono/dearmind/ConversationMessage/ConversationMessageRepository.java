@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,9 +27,9 @@ public interface ConversationMessageRepository extends JpaRepository<Conversatio
     
     // 현재 메시지보다 이전의 사용자 메시지 중 가장 최근 것 조회
     @Query("SELECT cm FROM ConversationMessage cm WHERE cm.conversationId = :conversationId AND cm.senderType = 'USER' AND cm.id < :currentMessageId ORDER BY cm.timestamp DESC")
-    Optional<ConversationMessage> findPreviousUserMessage(@Param("conversationId") Long conversationId, @Param("currentMessageId") Long currentMessageId);
+    List<ConversationMessage> findPreviousUserMessages(@Param("conversationId") Long conversationId, @Param("currentMessageId") Long currentMessageId, Pageable pageable);
     
     // 현재 메시지보다 이전의 AI 메시지 중 가장 최근 것 조회
     @Query("SELECT cm FROM ConversationMessage cm WHERE cm.conversationId = :conversationId AND cm.senderType = 'AI' AND cm.id < :currentMessageId ORDER BY cm.timestamp DESC")
-    Optional<ConversationMessage> findPreviousSystemMessage(@Param("conversationId") Long conversationId, @Param("currentMessageId") Long currentMessageId);
+    List<ConversationMessage> findPreviousSystemMessages(@Param("conversationId") Long conversationId, @Param("currentMessageId") Long currentMessageId, Pageable pageable);
 } 

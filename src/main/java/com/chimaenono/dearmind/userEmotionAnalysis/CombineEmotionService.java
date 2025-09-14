@@ -73,7 +73,10 @@ public class CombineEmotionService {
             
             // 2. 감정 매핑 (영어 → 한국어)
             String facialEmotionKorean = emotionMapping.get(facialData.getFinalEmotion());
-            String speechEmotionKorean = (String) speechData.get("emotion");
+            
+            // speechEmotion JSON 구조: {"text":"...", "analysisResult":{"emotion":"슬픔", "confidence":0.206...}}
+            Map<String, Object> analysisResult = (Map<String, Object>) speechData.get("analysisResult");
+            String speechEmotionKorean = (String) analysisResult.get("emotion");
             
             if (facialEmotionKorean == null || speechEmotionKorean == null) {
                 throw new RuntimeException("알 수 없는 감정 값입니다. facial: " + facialData.getFinalEmotion() + ", speech: " + speechEmotionKorean);
@@ -84,7 +87,7 @@ public class CombineEmotionService {
             
             if (isSameEmotion) {
                 // 같은 감정: 평균 신뢰도
-                Double speechConfidence = ((Number) speechData.get("confidence")).doubleValue();
+                Double speechConfidence = ((Number) analysisResult.get("confidence")).doubleValue();
                 double averageConfidence = (facialData.getAverageConfidence() + speechConfidence) / 2;
                 
                 return new CombinedEmotionResult(
@@ -93,7 +96,7 @@ public class CombineEmotionService {
                 );
             } else {
                 // 다른 감정: 신뢰도가 높은 것 선택
-                Double speechConfidence = ((Number) speechData.get("confidence")).doubleValue();
+                Double speechConfidence = ((Number) analysisResult.get("confidence")).doubleValue();
                 
                 if (facialData.getAverageConfidence() > speechConfidence) {
                     return new CombinedEmotionResult(

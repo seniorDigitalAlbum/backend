@@ -7,8 +7,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import com.chimaenono.dearmind.camera.CameraSession;
 import com.chimaenono.dearmind.camera.CameraSessionRepository;
-import com.chimaenono.dearmind.conversation.ConversationService;
 import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
+import com.chimaenono.dearmind.conversationMessage.ConversationMessageRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,7 +26,7 @@ public class MicrophoneService {
     private CameraSessionRepository cameraSessionRepository;
     
     @Autowired
-    private ConversationService conversationService;
+    private ConversationMessageRepository conversationMessageRepository;
 
     @Operation(summary = "마이크 세션 생성", description = "새로운 마이크 세션을 생성합니다")
     public MicrophoneSession createSession(String userId, String audioFormat, Integer sampleRate) {
@@ -205,10 +205,12 @@ public class MicrophoneService {
         
         try {
             // 1. ConversationMessage 생성 (사용자 발화 저장)
-            ConversationMessage userMessage = conversationService.saveUserMessage(
-                request.getConversationId(), 
-                request.getUserText()
-            );
+            ConversationMessage userMessage = new ConversationMessage();
+            userMessage.setConversationId(request.getConversationId());
+            userMessage.setContent(request.getUserText());
+            userMessage.setSenderType(ConversationMessage.SenderType.USER);
+            userMessage.setTimestamp(LocalDateTime.now());
+            userMessage = conversationMessageRepository.save(userMessage);
             
             // 2. 마이크 세션 상태를 ACTIVE로 변경
             microphoneSession.setStatus("ACTIVE");

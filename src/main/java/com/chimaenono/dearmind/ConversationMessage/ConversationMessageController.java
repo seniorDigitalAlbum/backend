@@ -1,7 +1,6 @@
 package com.chimaenono.dearmind.conversationMessage;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,7 +10,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,23 +22,6 @@ public class ConversationMessageController {
     @Autowired
     private ConversationMessageService conversationMessageService;
     
-    @Operation(summary = "새로운 대화 메시지 생성", 
-               description = "STT로 변환된 텍스트를 대화 메시지로 저장합니다.")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "메시지 생성 성공"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
-        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
-    })
-    @PostMapping("/messages")
-    public ResponseEntity<ConversationMessageResponse> createMessage(
-            @Valid @RequestBody ConversationMessageRequest request) {
-        try {
-            ConversationMessageResponse response = conversationMessageService.createMessage(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
     
     @Operation(summary = "대화 세션의 모든 메시지 조회", 
                description = "특정 대화 세션의 모든 메시지를 시간순으로 조회합니다.")

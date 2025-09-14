@@ -1,6 +1,7 @@
 package com.chimaenono.dearmind.conversation;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
@@ -42,6 +43,7 @@ public class ConversationService {
     private CameraService cameraService;
     
     @Autowired
+    @Lazy
     private MicrophoneService microphoneService;
     
     @Operation(summary = "통합 대화 시작", description = "카메라 세션, 마이크 세션, 대화방을 통합으로 생성합니다")

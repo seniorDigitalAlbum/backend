@@ -141,35 +141,7 @@ POST /api/microphone/speech/start
 }
 ```
 
-### 4. STT (Speech-to-Text) 변환
-
-#### 엔드포인트
-```
-POST /api/stt/transcribe
-```
-
-#### 요청
-```json
-{
-  "audioData": "base64_encoded_audio_data",
-  "format": "wav",
-  "language": "ko"
-}
-```
-
-#### 응답
-```json
-{
-  "text": "어릴 때 자주 했던 놀이는 숨바꼭질이었어요.",
-  "language": "ko",
-  "confidence": 0.95,
-  "duration": 2.3,
-  "status": "success",
-  "errorMessage": null
-}
-```
-
-### 5. 발화 종료
+### 4. 발화 종료
 
 #### 엔드포인트
 ```
@@ -183,7 +155,7 @@ POST /api/microphone/speech/end
   "microphoneSessionId": "mic_456",
   "cameraSessionId": "cam_123",
   "conversationId": 1,
-  "userText": "어릴 때 자주 했던 놀이는 숨바꼭질이었어요."
+  "audioData": "base64_encoded_audio_data"
 }
 ```
 

@@ -30,7 +30,7 @@ public class SpeechEndRequest {
     @Schema(description = "대화 세션 ID", example = "1", required = true)
     private Long conversationId;
     
-    @NotBlank(message = "사용자 발화 텍스트는 필수입니다")
-    @Schema(description = "사용자 발화 텍스트 (STT 결과)", example = "어릴 때 자주 했던 놀이는 숨바꼭질이었어요.", required = true)
-    private String userText;
+    @NotBlank(message = "오디오 데이터는 필수입니다")
+    @Schema(description = "오디오 데이터 (Base64 인코딩)", example = "base64_encoded_audio_data", required = true)
+    private String audioData;
 }

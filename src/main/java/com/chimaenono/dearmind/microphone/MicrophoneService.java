@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import com.chimaenono.dearmind.camera.CameraSession;
 import com.chimaenono.dearmind.camera.CameraSessionRepository;
+import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
+import com.chimaenono.dearmind.conversationMessage.ConversationMessageRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,6 +24,9 @@ public class MicrophoneService {
     
     @Autowired
     private CameraSessionRepository cameraSessionRepository;
+    
+    @Autowired
+    private ConversationMessageRepository conversationMessageRepository;
 
     @Operation(summary = "마이크 세션 생성", description = "새로운 마이크 세션을 생성합니다")
     public MicrophoneSession createSession(String userId, String audioFormat, Integer sampleRate) {
@@ -160,32 +165,32 @@ public class MicrophoneService {
         }
     }
 
-    @Operation(summary = "발화 종료", description = "사용자의 발화를 종료합니다. 마이크와 카메라 세션 상태를 ACTIVE로 변경합니다.")
-    public boolean endSpeech(String microphoneSessionId, String cameraSessionId, String userId) {
+    @Operation(summary = "발화 종료", description = "사용자의 발화를 종료합니다. 마이크와 카메라 세션 상태를 ACTIVE로 변경하고 ConversationMessage를 생성합니다.")
+    public SpeechEndResponse endSpeech(SpeechEndRequest request) {
         // 마이크 세션 조회
-        Optional<MicrophoneSession> microphoneSessionOpt = microphoneSessionRepository.findBySessionId(microphoneSessionId);
+        Optional<MicrophoneSession> microphoneSessionOpt = microphoneSessionRepository.findBySessionId(request.getMicrophoneSessionId());
         
         if (!microphoneSessionOpt.isPresent()) {
-            throw new RuntimeException("마이크 세션을 찾을 수 없습니다: " + microphoneSessionId);
+            throw new RuntimeException("마이크 세션을 찾을 수 없습니다: " + request.getMicrophoneSessionId());
         }
         
         MicrophoneSession microphoneSession = microphoneSessionOpt.get();
         
         // 카메라 세션 조회
-        Optional<CameraSession> cameraSessionOpt = cameraSessionRepository.findBySessionId(cameraSessionId);
+        Optional<CameraSession> cameraSessionOpt = cameraSessionRepository.findBySessionId(request.getCameraSessionId());
         
         if (!cameraSessionOpt.isPresent()) {
-            throw new RuntimeException("카메라 세션을 찾을 수 없습니다: " + cameraSessionId);
+            throw new RuntimeException("카메라 세션을 찾을 수 없습니다: " + request.getCameraSessionId());
         }
         
         CameraSession cameraSession = cameraSessionOpt.get();
         
         // 사용자 ID 검증 (마이크와 카메라 세션 모두)
-        if (!microphoneSession.getUserId().equals(userId)) {
+        if (!microphoneSession.getUserId().equals(request.getUserId())) {
             throw new RuntimeException("마이크 세션의 사용자 ID가 일치하지 않습니다.");
         }
         
-        if (!cameraSession.getUserId().equals(userId)) {
+        if (!cameraSession.getUserId().equals(request.getUserId())) {
             throw new RuntimeException("카메라 세션의 사용자 ID가 일치하지 않습니다.");
         }
         
@@ -199,15 +204,31 @@ public class MicrophoneService {
         }
         
         try {
-            // 마이크 세션 상태를 ACTIVE로 변경
+            // 1. ConversationMessage 생성 (사용자 발화 저장)
+            ConversationMessage userMessage = new ConversationMessage();
+            userMessage.setConversationId(request.getConversationId());
+            userMessage.setContent(request.getUserText());
+            userMessage.setSenderType(ConversationMessage.SenderType.USER);
+            userMessage.setTimestamp(LocalDateTime.now());
+            userMessage = conversationMessageRepository.save(userMessage);
+            
+            // 2. 마이크 세션 상태를 ACTIVE로 변경
             microphoneSession.setStatus("ACTIVE");
             microphoneSessionRepository.save(microphoneSession);
             
-            // 카메라 세션 상태를 ACTIVE로 변경
+            // 3. 카메라 세션 상태를 ACTIVE로 변경
             cameraSession.setStatus("ACTIVE");
             cameraSessionRepository.save(cameraSession);
             
-            return true;
+            // 4. 성공 응답 반환
+            return SpeechEndResponse.success(
+                userMessage.getId(),
+                request.getUserText(),
+                request.getMicrophoneSessionId(),
+                request.getCameraSessionId(),
+                request.getUserId(),
+                request.getConversationId()
+            );
             
         } catch (Exception e) {
             // 롤백: 마이크 세션 상태 복원

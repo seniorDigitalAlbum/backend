@@ -25,44 +25,6 @@ public class MicrophoneController {
     @Autowired
     private MicrophoneService microphoneService;
 
-    @PostMapping("/session")
-    @Operation(
-        summary = "마이크 세션 생성",
-        description = "질문 선택 후 마이크 세션을 생성합니다."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "세션 생성 성공",
-            content = @Content(schema = @Schema(implementation = Map.class))
-        ),
-        @ApiResponse(
-            responseCode = "500",
-            description = "서버 오류",
-            content = @Content(schema = @Schema(implementation = Map.class))
-        )
-    })
-    public ResponseEntity<Map<String, Object>> createSession(
-        @Parameter(description = "사용자 ID", example = "user_123")
-        @RequestParam String userId,
-        @Parameter(description = "오디오 포맷", example = "WAV")
-        @RequestParam(required = false) String audioFormat,
-        @Parameter(description = "샘플 레이트", example = "44100")
-        @RequestParam(required = false) Integer sampleRate
-    ) {
-        Map<String, Object> response = new HashMap<>();
-        try {
-            MicrophoneSession session = microphoneService.createSession(userId, audioFormat, sampleRate);
-            response.put("status", "success");
-            response.put("session", session);
-            response.put("message", "마이크 세션이 생성되었습니다.");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            response.put("status", "error");
-            response.put("message", "세션 생성 실패: " + e.getMessage());
-            return ResponseEntity.status(500).body(response);
-        }
-    }
 
     @GetMapping("/session/{sessionId}")
     @Operation(
@@ -98,81 +60,6 @@ public class MicrophoneController {
         }
     }
 
-    @PutMapping("/session/{sessionId}/status")
-    @Operation(
-        summary = "세션 상태 업데이트",
-        description = "마이크 세션의 상태를 업데이트합니다."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "상태 업데이트 성공",
-            content = @Content(schema = @Schema(implementation = Map.class))
-        ),
-        @ApiResponse(
-            responseCode = "404",
-            description = "세션을 찾을 수 없음",
-            content = @Content(schema = @Schema(implementation = Map.class))
-        )
-    })
-    public ResponseEntity<Map<String, Object>> updateSessionStatus(
-        @Parameter(description = "세션 ID", example = "session_12345")
-        @PathVariable String sessionId,
-        @Parameter(description = "새로운 상태", example = "RECORDING")
-        @RequestParam String status
-    ) {
-        Map<String, Object> response = new HashMap<>();
-        MicrophoneSession session = microphoneService.updateSessionStatus(sessionId, status);
-        if (session != null) {
-            response.put("status", "success");
-            response.put("session", session);
-            response.put("message", "세션 상태가 업데이트되었습니다.");
-            return ResponseEntity.ok(response);
-        } else {
-            response.put("status", "error");
-            response.put("message", "세션을 찾을 수 없습니다.");
-            return ResponseEntity.status(404).body(response);
-        }
-    }
-
-    @PutMapping("/session/{sessionId}/settings")
-    @Operation(
-        summary = "오디오 설정 업데이트",
-        description = "마이크 세션의 오디오 설정을 업데이트합니다."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "설정 업데이트 성공",
-            content = @Content(schema = @Schema(implementation = Map.class))
-        ),
-        @ApiResponse(
-            responseCode = "404",
-            description = "세션을 찾을 수 없음",
-            content = @Content(schema = @Schema(implementation = Map.class))
-        )
-    })
-    public ResponseEntity<Map<String, Object>> updateAudioSettings(
-        @Parameter(description = "세션 ID", example = "session_12345")
-        @PathVariable String sessionId,
-        @Parameter(description = "오디오 포맷", example = "WAV")
-        @RequestParam(required = false) String audioFormat,
-        @Parameter(description = "샘플 레이트", example = "44100")
-        @RequestParam(required = false) Integer sampleRate
-    ) {
-        Map<String, Object> response = new HashMap<>();
-        MicrophoneSession session = microphoneService.updateAudioSettings(sessionId, audioFormat, sampleRate);
-        if (session != null) {
-            response.put("status", "success");
-            response.put("session", session);
-            response.put("message", "오디오 설정이 업데이트되었습니다.");
-            return ResponseEntity.ok(response);
-        } else {
-            response.put("status", "error");
-            response.put("message", "세션을 찾을 수 없습니다.");
-            return ResponseEntity.status(404).body(response);
-        }
-    }
 
     @DeleteMapping("/session/{sessionId}")
     @Operation(
@@ -279,13 +166,13 @@ public class MicrophoneController {
     @PostMapping("/speech/end")
     @Operation(
         summary = "발화 종료",
-        description = "사용자의 발화를 종료합니다. 마이크 세션 상태를 ACTIVE로 변경합니다."
+        description = "사용자의 발화를 종료합니다. 마이크 세션 상태를 ACTIVE로 변경하고 ConversationMessage를 생성합니다."
     )
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200",
             description = "발화 종료 성공",
-            content = @Content(schema = @Schema(implementation = Map.class))
+            content = @Content(schema = @Schema(implementation = SpeechEndResponse.class))
         ),
         @ApiResponse(
             responseCode = "400",
@@ -303,37 +190,20 @@ public class MicrophoneController {
             content = @Content(schema = @Schema(implementation = Map.class))
         )
     })
-    public ResponseEntity<Map<String, Object>> endSpeech(
-        @Parameter(description = "마이크 세션 ID", example = "microphone_session_456")
-        @RequestParam String microphoneSessionId,
-        @Parameter(description = "카메라 세션 ID", example = "camera_session_789")
-        @RequestParam String cameraSessionId,
-        @Parameter(description = "사용자 ID", example = "user123")
-        @RequestParam String userId
-    ) {
-        Map<String, Object> response = new HashMap<>();
+    public ResponseEntity<?> endSpeech(@RequestBody SpeechEndRequest request) {
         try {
-            boolean success = microphoneService.endSpeech(microphoneSessionId, cameraSessionId, userId);
-            if (success) {
-                response.put("status", "success");
-                response.put("message", "발화가 종료되었습니다.");
-                response.put("microphoneSessionId", microphoneSessionId);
-                response.put("cameraSessionId", cameraSessionId);
-                response.put("userId", userId);
-                return ResponseEntity.ok(response);
-            } else {
-                response.put("status", "error");
-                response.put("message", "발화 종료에 실패했습니다.");
-                return ResponseEntity.status(500).body(response);
-            }
+            SpeechEndResponse response = microphoneService.endSpeech(request);
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(400).body(response);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(400).body(errorResponse);
         } catch (Exception e) {
-            response.put("status", "error");
-            response.put("message", "발화 종료 중 오류가 발생했습니다: " + e.getMessage());
-            return ResponseEntity.status(500).body(response);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", "발화 종료 중 오류가 발생했습니다: " + e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
         }
     }
 

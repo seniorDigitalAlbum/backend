@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KoBERT 감정 분석 테스트</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .section h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .ai-message {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            color: #0066cc;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .ai-message strong {
+            color: #004499;
+        }
+        .user-message {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .user-message strong {
+            color: #6c5ce7;
+        }
+        .emotion-result {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #495057;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .emotion-result strong {
+            color: #212529;
+        }
+        .conversation-log {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            background-color: #f8f9fa;
+        }
+        .conversation-entry {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .conversation-entry.ai {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+        .conversation-entry.user {
+            background-color: #fff3e0;
+            border-left: 4px solid #ff9800;
+        }
+        .conversation-entry.emotion {
+            background-color: #f3e5f5;
+            border-left: 4px solid #9c27b0;
+        }
+        .timestamp {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .emotion-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .emotion-joy { background-color: #ffeb3b; color: #333; }
+        .emotion-sadness { background-color: #2196f3; color: white; }
+        .emotion-anger { background-color: #f44336; color: white; }
+        .emotion-fear { background-color: #9c27b0; color: white; }
+        .emotion-surprise { background-color: #ff9800; color: white; }
+        .emotion-neutral { background-color: #9e9e9e; color: white; }
+        .emotion-hurt { background-color: #e91e63; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 KoBERT 감정 분석 테스트</h1>
+        
+        <!-- 회상 요법 질문 표시 -->
+        <div class="section">
+            <h2>📝 회상 요법 질문</h2>
+            <div id="reminiscentQuestion" class="ai-message">
+                <strong>AI:</strong> <span id="questionText">질문을 생성하는 중...</span>
+            </div>
+            <button onclick="generateNewQuestion()">새 질문 생성</button>
+        </div>
+
+        <!-- 사용자 입력 -->
+        <div class="section">
+            <h2>💬 사용자 응답 입력</h2>
+            <div class="form-group">
+                <label for="userInput">사용자 응답:</label>
+                <textarea id="userInput" placeholder="회상 요법 질문에 대한 답변을 입력하세요..."></textarea>
+            </div>
+            <button onclick="analyzeEmotion()">감정 분석 실행</button>
+            <button onclick="analyzeEmotionAlternative()">대안 형식 시도</button>
+            <button onclick="testGPTAPI()">GPT API 테스트</button>
+            <button onclick="clearInput()">입력 초기화</button>
+        </div>
+
+        <!-- 감정 분석 결과 -->
+        <div class="section">
+            <h2>📊 감정 분석 결과</h2>
+            <div id="emotionResults"></div>
+        </div>
+
+        <!-- 대화 로그 -->
+        <div class="section">
+            <h2>📋 대화 로그</h2>
+            <div id="conversationLog" class="conversation-log"></div>
+            <button onclick="clearConversation()">대화 로그 초기화</button>
+        </div>
+    </div>
+
+    <script>
+        const KOBERT_API_URL = 'http://127.0.0.1:8001/predict_emotion';
+        let conversationCount = 0;
+        
+        // 대화 히스토리 관리
+        let conversationHistory = {
+            prevUser: '',
+            prevSys: '',
+            currentUser: ''
+        };
+
+        // 회상 요법 질문 리스트
+        const reminiscentQuestions = [
+            "어린 시절 가장 기억에 남는 놀이는 무엇인가요?",
+            "처음으로 직장에 다니게 되었을 때의 기분은 어땠나요?",
+            "가장 인상 깊었던 여행은 언제, 어디였나요?",
+            "어린 시절 가장 좋아했던 음식은 무엇인가요?",
+            "첫사랑을 기억하시나요? 어떤 기분이었나요?",
+            "가족과 함께한 가장 행복했던 순간은 언제인가요?",
+            "어린 시절 가장 친했던 친구는 누구였나요?",
+            "처음으로 집을 마련했을 때의 기분은 어땠나요?",
+            "가장 기억에 남는 생일은 언제인가요?",
+            "어린 시절 가장 무서웠던 경험은 무엇인가요?",
+            "가장 자랑스러웠던 순간은 언제인가요?",
+            "어린 시절 가장 좋아했던 장난감은 무엇인가요?",
+            "가족과 함께한 가장 맛있었던 식사는 언제인가요?",
+            "처음으로 자동차를 운전했을 때의 기분은 어땠나요?",
+            "가장 기억에 남는 선생님은 누구였나요?",
+            "어린 시절 가장 좋아했던 계절은 언제인가요?",
+            "가족과 함께한 가장 재미있었던 게임은 무엇인가요?",
+            "처음으로 해외여행을 갔을 때의 경험은 어땠나요?",
+            "가장 기억에 남는 선물을 받았던 순간은 언제인가요?",
+            "어린 시절 가장 좋아했던 동물은 무엇인가요?"
+        ];
+
+        // 페이지 로드 시 첫 번째 질문 생성
+        window.onload = function() {
+            generateNewQuestion();
+        };
+
+        // 새 질문 생성
+        function generateNewQuestion() {
+            const randomIndex = Math.floor(Math.random() * reminiscentQuestions.length);
+            const question = reminiscentQuestions[randomIndex];
+            document.getElementById('questionText').textContent = question;
+            
+            // 대화 히스토리 초기화
+            conversationHistory = {
+                prevUser: '',
+                prevSys: '',
+                currentUser: ''
+            };
+            
+            // 대화 로그에 AI 질문 추가
+            addToConversationLog('ai', question);
+        }
+
+        // 감정 분석 실행
+        async function analyzeEmotion() {
+            const userInput = document.getElementById('userInput').value.trim();
+            
+            if (!userInput) {
+                alert('사용자 응답을 입력해주세요.');
+                return;
+            }
+
+            try {
+                // KoBERT API 호출 - 여러 형식 시도
+                let requestBody;
+                
+                // 형식 1: 대화 히스토리 포함
+                requestBody = {
+                    prev_user: conversationHistory.prevUser,
+                    prev_sys: conversationHistory.prevSys,
+                    curr_user: userInput
+                };
+                
+                console.log('KoBERT API 요청 데이터:', requestBody);
+                
+                const response = await fetch(KOBERT_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    // 422 에러의 경우 상세 정보 확인
+                    let errorMessage = `HTTP error! status: ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        console.error('KoBERT API 에러 상세:', errorData);
+                        errorMessage += ` - ${JSON.stringify(errorData)}`;
+                    } catch (e) {
+                        console.error('에러 응답 파싱 실패:', e);
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const result = await response.json();
+                console.log('KoBERT API 응답:', result);
+                
+                // 감정 분석 결과 표시
+                displayEmotionResult(userInput, result);
+                
+                // 대화 로그에 사용자 응답과 감정 분석 결과 추가
+                addToConversationLog('user', userInput);
+                addToConversationLog('emotion', result);
+                
+                // 입력 초기화
+                document.getElementById('userInput').value = '';
+                
+            } catch (error) {
+                console.error('감정 분석 오류:', error);
+                displayEmotionError(userInput, error.message);
+            }
+        }
+
+        // 감정 분석 결과 표시
+        function displayEmotionResult(userInput, result) {
+            const resultsContainer = document.getElementById('emotionResults');
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'emotion-result';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            
+            // KoBERT API 응답 형식에 맞게 감정 추출
+            const emotion = result.predicted_label || result.emotion || 'unknown';
+            const confidence = result.confidence || 0;
+            const confidencePercent = Math.round(confidence * 100);
+            
+            resultDiv.innerHTML = `
+                <div class="timestamp">${timestamp}</div>
+                <div><strong>입력 텍스트:</strong> "${userInput}"</div>
+                <div><strong>감정:</strong> ${emotion} <span class="emotion-badge emotion-${emotion}">${emotion}</span></div>
+                <div><strong>신뢰도:</strong> ${confidencePercent}%</div>
+                <div><strong>원본 응답:</strong> ${JSON.stringify(result, null, 2)}</div>
+                <button class="gpt-response-btn" data-emotion="${emotion}" data-confidence="${confidence}" data-user-input="${userInput.replace(/"/g, '&quot;')}" style="margin-top: 10px; background-color: #28a745;">GPT 회상 요법 응답 생성</button>
+            `;
+            
+            // GPT 응답 버튼에 이벤트 리스너 추가
+            const gptBtn = resultDiv.querySelector('.gpt-response-btn');
+            gptBtn.addEventListener('click', function() {
+                const emotion = this.getAttribute('data-emotion');
+                const confidence = parseFloat(this.getAttribute('data-confidence'));
+                const userInput = this.getAttribute('data-user-input');
+                generateGPTResponse(emotion, confidence, userInput);
+            });
+            
+            // 최신 결과를 맨 위에 추가
+            resultsContainer.insertBefore(resultDiv, resultsContainer.firstChild);
+            
+            // 최대 10개 결과만 유지
+            while (resultsContainer.children.length > 10) {
+                resultsContainer.removeChild(resultsContainer.lastChild);
+            }
+        }
+
+        // 감정 분석 에러 표시
+        function displayEmotionError(userInput, errorMessage) {
+            const resultsContainer = document.getElementById('emotionResults');
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'emotion-result error';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            
+            errorDiv.innerHTML = `
+                <div class="timestamp">${timestamp}</div>
+                <div><strong>입력 텍스트:</strong> "${userInput}"</div>
+                <div><strong>에러:</strong> ${errorMessage}</div>
+            `;
+            
+            // 최신 에러를 맨 위에 추가
+            resultsContainer.insertBefore(errorDiv, resultsContainer.firstChild);
+            
+            // 최대 10개 결과만 유지
+            while (resultsContainer.children.length > 10) {
+                resultsContainer.removeChild(resultsContainer.lastChild);
+            }
+        }
+
+        // 대화 로그에 항목 추가
+        function addToConversationLog(type, content) {
+            const logContainer = document.getElementById('conversationLog');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const entryDiv = document.createElement('div');
+            entryDiv.className = `conversation-entry ${type}`;
+            
+            if (type === 'ai') {
+                entryDiv.innerHTML = `
+                    <div class="timestamp">${timestamp}</div>
+                    <div><strong>AI 질문:</strong> ${content}</div>
+                `;
+            } else if (type === 'user') {
+                entryDiv.innerHTML = `
+                    <div class="timestamp">${timestamp}</div>
+                    <div><strong>사용자:</strong> ${content}</div>
+                `;
+            } else if (type === 'emotion') {
+                const emotion = content.predicted_label || content.emotion || 'unknown';
+                const confidencePercent = Math.round((content.confidence || 0) * 100);
+                entryDiv.innerHTML = `
+                    <div class="timestamp">${timestamp}</div>
+                    <div><strong>감정 분석:</strong> ${emotion} <span class="emotion-badge emotion-${emotion}">${emotion}</span> (${confidencePercent}%)</div>
+                `;
+            } else if (type === 'gpt') {
+                entryDiv.innerHTML = `
+                    <div class="timestamp">${timestamp}</div>
+                    <div><strong>🤖 GPT 회상 요법 응답:</strong> ${content}</div>
+                `;
+            }
+            
+            logContainer.appendChild(entryDiv);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // 대안 형식으로 감정 분석 실행
+        async function analyzeEmotionAlternative() {
+            const userInput = document.getElementById('userInput').value.trim();
+            
+            if (!userInput) {
+                alert('사용자 응답을 입력해주세요.');
+                return;
+            }
+
+            try {
+                // 대안 형식들 시도
+                const alternativeFormats = [
+                    // 형식 1: 빈 문자열 사용
+                    {
+                        prev_user: "",
+                        prev_sys: "",
+                        curr_user: userInput
+                    },
+                    // 형식 2: text 필드 포함
+                    {
+                        text: userInput,
+                        prev_user: null,
+                        prev_sys: null,
+                        curr_user: userInput
+                    },
+                    // 형식 3: 단순 text만
+                    {
+                        text: userInput
+                    },
+                    // 형식 4: 다른 필드명
+                    {
+                        previous_user: null,
+                        previous_system: null,
+                        current_user: userInput
+                    }
+                ];
+
+                for (let i = 0; i < alternativeFormats.length; i++) {
+                    const format = alternativeFormats[i];
+                    console.log(`대안 형식 ${i + 1} 시도:`, format);
+                    
+                    try {
+                        const response = await fetch(KOBERT_API_URL, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(format)
+                        });
+
+                        if (response.ok) {
+                            const result = await response.json();
+                            console.log(`대안 형식 ${i + 1} 성공:`, result);
+                            
+                            // 성공한 형식으로 결과 표시
+                            displayEmotionResult(userInput, result);
+                            addToConversationLog('user', userInput);
+                            addToConversationLog('emotion', result);
+                            
+                            document.getElementById('userInput').value = '';
+                            return;
+                        } else {
+                            const errorData = await response.json();
+                            console.log(`대안 형식 ${i + 1} 실패:`, errorData);
+                        }
+                    } catch (e) {
+                        console.log(`대안 형식 ${i + 1} 예외:`, e.message);
+                    }
+                }
+                
+                throw new Error('모든 대안 형식이 실패했습니다.');
+                
+            } catch (error) {
+                console.error('대안 감정 분석 오류:', error);
+                displayEmotionError(userInput, error.message);
+            }
+        }
+
+        // GPT 회상 요법 응답 생성
+        async function generateGPTResponse(emotion, confidence, userInput) {
+            try {
+                console.log('GPT 응답 생성 시작:', { emotion, confidence, userInput });
+                
+                // 요청 데이터 준비 (대화 히스토리 포함)
+                const requestData = {
+                    emotion: emotion,
+                    confidence: confidence,
+                    prevUser: conversationHistory.prevUser,
+                    prevSys: conversationHistory.prevSys,
+                    currUser: userInput
+                };
+                
+                console.log('GPT API 요청 데이터:', requestData);
+                
+                // GPT API 호출
+                const response = await fetch('/api/gpt/generate-simple', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams(requestData)
+                });
+
+                console.log('GPT API 응답 상태:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    // 에러 응답 상세 정보 확인
+                    let errorMessage = `HTTP error! status: ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        console.error('GPT API 에러 상세:', errorData);
+                        errorMessage += ` - ${JSON.stringify(errorData)}`;
+                    } catch (e) {
+                        console.error('에러 응답 파싱 실패:', e);
+                        const errorText = await response.text();
+                        console.error('에러 응답 텍스트:', errorText);
+                        errorMessage += ` - ${errorText}`;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const result = await response.json();
+                console.log('GPT 응답 결과:', result);
+                
+                if (result.success) {
+                    // GPT 응답 표시
+                    displayGPTResponse(result.aiResponse, emotion, confidence);
+                    
+                    // 대화 로그에 GPT 응답 추가
+                    addToConversationLog('gpt', result.aiResponse);
+                    
+                    // 대화 히스토리 업데이트
+                    conversationHistory.prevUser = userInput;
+                    conversationHistory.prevSys = result.aiResponse;
+                    conversationHistory.currentUser = '';
+                    
+                    console.log('대화 히스토리 업데이트:', conversationHistory);
+                } else {
+                    throw new Error(result.error || 'GPT 응답 생성 실패');
+                }
+                
+            } catch (error) {
+                console.error('GPT 응답 생성 오류:', error);
+                alert('GPT 응답 생성 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+
+        // GPT 응답 표시
+        function displayGPTResponse(aiResponse, emotion, confidence) {
+            const resultsContainer = document.getElementById('emotionResults');
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'emotion-result';
+            resultDiv.style.backgroundColor = '#e8f5e8';
+            resultDiv.style.borderColor = '#4caf50';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const confidencePercent = Math.round(confidence * 100);
+            
+            resultDiv.innerHTML = `
+                <div class="timestamp">${timestamp}</div>
+                <div><strong>🤖 GPT 회상 요법 응답:</strong></div>
+                <div style="margin: 10px 0; padding: 10px; background-color: #f0f8f0; border-radius: 4px; font-style: italic;">
+                    "${aiResponse}"
+                </div>
+                <div><strong>기반 감정:</strong> ${emotion} (${confidencePercent}%)</div>
+            `;
+            
+            // 최신 결과를 맨 위에 추가
+            resultsContainer.insertBefore(resultDiv, resultsContainer.firstChild);
+            
+            // 최대 10개 결과만 유지
+            while (resultsContainer.children.length > 10) {
+                resultsContainer.removeChild(resultsContainer.lastChild);
+            }
+        }
+
+        // GPT API 테스트
+        async function testGPTAPI() {
+            try {
+                console.log('GPT API 테스트 시작');
+                
+                const testData = {
+                    emotion: '기쁨',
+                    confidence: 0.95,
+                    prevUser: '',
+                    prevSys: '',
+                    currUser: '테스트 메시지입니다.'
+                };
+                
+                console.log('GPT API 테스트 데이터:', testData);
+                
+                const response = await fetch('/api/gpt/generate-simple', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams(testData)
+                });
+
+                console.log('GPT API 테스트 응답 상태:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('GPT API 테스트 에러:', errorText);
+                    alert('GPT API 테스트 실패: ' + response.status + ' - ' + errorText);
+                    return;
+                }
+
+                const result = await response.json();
+                console.log('GPT API 테스트 성공:', result);
+                
+                if (result.success) {
+                    alert('GPT API 테스트 성공!\n응답: ' + result.aiResponse);
+                } else {
+                    alert('GPT API 테스트 실패: ' + (result.error || '알 수 없는 오류'));
+                }
+                
+            } catch (error) {
+                console.error('GPT API 테스트 오류:', error);
+                alert('GPT API 테스트 중 오류: ' + error.message);
+            }
+        }
+
+        // 입력 초기화
+        function clearInput() {
+            document.getElementById('userInput').value = '';
+        }
+
+        // 대화 로그 초기화
+        function clearConversation() {
+            document.getElementById('conversationLog').innerHTML = '';
+            conversationCount = 0;
+            
+            // 대화 히스토리도 초기화
+            conversationHistory = {
+                prevUser: '',
+                prevSys: '',
+                currentUser: ''
+            };
+            
+            console.log('대화 히스토리 초기화:', conversationHistory);
+        }
+
+        // Enter 키로 감정 분석 실행
+        document.getElementById('userInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                analyzeEmotion();
+            }
+        });
+    </script>
+</body>
+</html>

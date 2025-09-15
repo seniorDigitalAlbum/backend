@@ -19,6 +19,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/gpt")
@@ -213,6 +215,52 @@ public class GPTController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ConversationSummaryResponse.error("대화 요약 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/generate-simple")
+    @Operation(summary = "KoBERT 테스트용 단순 대화 생성", 
+               description = "KoBERT 테스트 페이지에서 사용하는 회상 요법 기반 대화 생성 (conversationMessageId 불필요, 저장/TTS 없음)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "대화 생성 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<Map<String, Object>> generateSimpleConversation(
+            @Parameter(description = "사용자 감정", example = "기쁨") @RequestParam String emotion,
+            @Parameter(description = "감정 신뢰도", example = "0.85") @RequestParam Double confidence,
+            @Parameter(description = "이전 사용자 발화", example = "오늘 힘든 하루였어요.") 
+            @RequestParam(required = false) String prevUser,
+            @Parameter(description = "이전 AI 발화", example = "정말 힘들었겠어요.") 
+            @RequestParam(required = false) String prevSys,
+            @Parameter(description = "현재 사용자 발화", example = "공부한 만큼 결과가 안 나와서 실망이 커요.") 
+            @RequestParam String currUser) {
+        try {
+            // GPT API를 통한 응답 생성 (저장, TTS 없이 단순 생성만)
+            String aiResponse = gptService.generateEmotionBasedResponse(
+                emotion, 
+                confidence, 
+                prevUser, 
+                prevSys, 
+                currUser
+            );
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("aiResponse", aiResponse);
+            response.put("emotion", emotion);
+            response.put("confidence", confidence);
+            response.put("timestamp", java.time.LocalDateTime.now());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("error", "대화 생성 중 오류가 발생했습니다: " + e.getMessage());
+            errorResponse.put("timestamp", java.time.LocalDateTime.now());
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
 }

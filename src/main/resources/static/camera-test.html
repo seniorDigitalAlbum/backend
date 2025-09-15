@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DearMind 카메라 API 테스트</title>
+    <title>YOLO 감정 분석 테스트</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
-            max-width: 1200px;
+            max-width: 800px;
             margin: 0 auto;
             padding: 20px;
             background-color: #f5f5f5;
@@ -43,7 +43,7 @@
             font-weight: bold;
             color: #333;
         }
-        input, select {
+        input {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
@@ -74,7 +74,7 @@
             border-radius: 4px;
             font-family: monospace;
             white-space: pre-wrap;
-            max-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
         }
         .success {
@@ -86,11 +86,6 @@
             background-color: #f8d7da;
             border: 1px solid #f5c6cb;
             color: #721c24;
-        }
-        .info {
-            background-color: #d1ecf1;
-            border: 1px solid #bee5eb;
-            color: #0c5460;
         }
         .camera-preview {
             width: 100%;
@@ -112,95 +107,29 @@
             border-radius: 50%;
             margin-right: 8px;
         }
-        .status-active {
-            background-color: #28a745;
-        }
         .status-inactive {
             background-color: #dc3545;
         }
         .status-recording {
             background-color: #ffc107;
         }
+        .emotion-result {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            color: #0066cc;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .emotion-result strong {
+            color: #004499;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📹 DearMind 카메라 API 테스트</h1>
+        <h1>😊 YOLO 감정 분석 테스트</h1>
         
-        <!-- 서비스 상태 확인 -->
-        <div class="section">
-            <h2>🔍 서비스 상태 확인</h2>
-            <button onclick="checkHealth()">서비스 상태 확인</button>
-            <div id="healthResponse" class="response" style="display: none;"></div>
-        </div>
-
-        <!-- 카메라 세션 생성 -->
-        <div class="section">
-            <h2>🎬 카메라 세션 생성</h2>
-            <div class="form-group">
-                <label for="userId">사용자 ID:</label>
-                <input type="text" id="userId" value="test_user_123" placeholder="사용자 ID를 입력하세요">
-            </div>
-            <div class="form-group">
-                <label for="questionId">질문 ID:</label>
-                <input type="number" id="questionId" value="1" placeholder="질문 ID를 입력하세요">
-            </div>
-            <button onclick="createSession()">카메라 세션 생성</button>
-            <div id="createResponse" class="response" style="display: none;"></div>
-        </div>
-
-        <!-- 세션 정보 조회 -->
-        <div class="section">
-            <h2>📋 세션 정보 조회</h2>
-            <div class="form-group">
-                <label for="sessionId">세션 ID:</label>
-                <input type="text" id="sessionId" placeholder="세션 ID를 입력하세요">
-            </div>
-            <button onclick="getSession()">세션 정보 조회</button>
-            <div id="getResponse" class="response" style="display: none;"></div>
-        </div>
-
-        <!-- 세션 상태 업데이트 -->
-        <div class="section">
-            <h2>⚙️ 세션 상태 업데이트</h2>
-            <div class="form-group">
-                <label for="updateSessionId">세션 ID:</label>
-                <input type="text" id="updateSessionId" placeholder="세션 ID를 입력하세요">
-            </div>
-            <div class="form-group">
-                <label for="status">새로운 상태:</label>
-                <select id="status">
-                    <option value="ACTIVE">ACTIVE</option>
-                    <option value="RECORDING">RECORDING</option>
-                    <option value="INACTIVE">INACTIVE</option>
-                </select>
-            </div>
-            <button onclick="updateSessionStatus()">상태 업데이트</button>
-            <div id="updateResponse" class="response" style="display: none;"></div>
-        </div>
-
-        <!-- 사용자 세션 목록 -->
-        <div class="section">
-            <h2>👤 사용자 세션 목록</h2>
-            <div class="form-group">
-                <label for="listUserId">사용자 ID:</label>
-                <input type="text" id="listUserId" value="test_user_123" placeholder="사용자 ID를 입력하세요">
-            </div>
-            <button onclick="getUserSessions()">세션 목록 조회</button>
-            <div id="listResponse" class="response" style="display: none;"></div>
-        </div>
-
-        <!-- 세션 종료 -->
-        <div class="section">
-            <h2>🛑 세션 종료</h2>
-            <div class="form-group">
-                <label for="deleteSessionId">세션 ID:</label>
-                <input type="text" id="deleteSessionId" placeholder="세션 ID를 입력하세요">
-            </div>
-            <button onclick="endSession()">세션 종료</button>
-            <div id="deleteResponse" class="response" style="display: none;"></div>
-        </div>
-
         <!-- 카메라 프리뷰 -->
         <div class="section">
             <h2>📷 카메라 프리뷰</h2>
@@ -210,130 +139,34 @@
             <button onclick="startCamera()">카메라 시작</button>
             <button onclick="stopCamera()">카메라 중지</button>
         </div>
+
+        <!-- 실시간 감정 분석 -->
+        <div class="section">
+            <h2>😊 실시간 감정 분석 (YOLO API)</h2>
+            <div class="form-group">
+                <label for="captureInterval">캡처 간격 (초):</label>
+                <input type="number" id="captureInterval" value="3" min="1" max="10" placeholder="캡처 간격을 입력하세요">
+            </div>
+            <button onclick="startEmotionAnalysis()">감정 분석 시작</button>
+            <button onclick="stopEmotionAnalysis()">감정 분석 중지</button>
+            <div id="emotionStatus" style="margin-top: 10px;">
+                <span class="status-indicator status-inactive"></span>
+                <span>감정 분석 중지됨</span>
+            </div>
+        </div>
+
+        <!-- 감정 분석 결과 -->
+        <div class="section">
+            <h2>📊 감정 분석 결과</h2>
+            <div id="emotionResults"></div>
+        </div>
     </div>
 
     <script>
-        const API_BASE_URL = 'http://localhost:8080/api/camera';
-        let currentSessionId = null;
+        const YOLO_API_URL = 'http://127.0.0.1:8000/predict_emotion';
         let stream = null;
-
-        // 서비스 상태 확인
-        async function checkHealth() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/health`);
-                const data = await response.json();
-                showResponse('healthResponse', data, response.ok);
-            } catch (error) {
-                showResponse('healthResponse', { error: error.message }, false);
-            }
-        }
-
-        // 카메라 세션 생성
-        async function createSession() {
-            const userId = document.getElementById('userId').value;
-            const questionId = document.getElementById('questionId').value;
-            
-            if (!userId || !questionId) {
-                alert('사용자 ID와 질문 ID를 입력해주세요.');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/session?userId=${userId}&questionId=${questionId}`, {
-                    method: 'POST'
-                });
-                const data = await response.json();
-                showResponse('createResponse', data, response.ok);
-                
-                if (response.ok && data.session) {
-                    currentSessionId = data.session.sessionId;
-                    document.getElementById('sessionId').value = currentSessionId;
-                    document.getElementById('updateSessionId').value = currentSessionId;
-                    document.getElementById('deleteSessionId').value = currentSessionId;
-                }
-            } catch (error) {
-                showResponse('createResponse', { error: error.message }, false);
-            }
-        }
-
-        // 세션 정보 조회
-        async function getSession() {
-            const sessionId = document.getElementById('sessionId').value;
-            if (!sessionId) {
-                alert('세션 ID를 입력해주세요.');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/session/${sessionId}`);
-                const data = await response.json();
-                showResponse('getResponse', data, response.ok);
-            } catch (error) {
-                showResponse('getResponse', { error: error.message }, false);
-            }
-        }
-
-        // 세션 상태 업데이트
-        async function updateSessionStatus() {
-            const sessionId = document.getElementById('updateSessionId').value;
-            const status = document.getElementById('status').value;
-            
-            if (!sessionId) {
-                alert('세션 ID를 입력해주세요.');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/session/${sessionId}/status?status=${status}`, {
-                    method: 'PUT'
-                });
-                const data = await response.json();
-                showResponse('updateResponse', data, response.ok);
-            } catch (error) {
-                showResponse('updateResponse', { error: error.message }, false);
-            }
-        }
-
-        // 사용자 세션 목록 조회
-        async function getUserSessions() {
-            const userId = document.getElementById('listUserId').value;
-            if (!userId) {
-                alert('사용자 ID를 입력해주세요.');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/sessions/user/${userId}`);
-                const data = await response.json();
-                showResponse('listResponse', data, response.ok);
-            } catch (error) {
-                showResponse('listResponse', { error: error.message }, false);
-            }
-        }
-
-        // 세션 종료
-        async function endSession() {
-            const sessionId = document.getElementById('deleteSessionId').value;
-            if (!sessionId) {
-                alert('세션 ID를 입력해주세요.');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/session/${sessionId}`, {
-                    method: 'DELETE'
-                });
-                const data = await response.json();
-                showResponse('deleteResponse', data, response.ok);
-                
-                if (response.ok) {
-                    currentSessionId = null;
-                    stopCamera();
-                }
-            } catch (error) {
-                showResponse('deleteResponse', { error: error.message }, false);
-            }
-        }
+        let emotionAnalysisInterval = null;
+        let isEmotionAnalysisActive = false;
 
         // 카메라 시작
         async function startCamera() {
@@ -353,14 +186,10 @@
                 preview.innerHTML = '';
                 preview.appendChild(video);
                 
-                showResponse('updateResponse', { 
-                    status: 'success', 
-                    message: '카메라가 시작되었습니다.' 
-                }, true);
+                console.log('카메라가 시작되었습니다.');
             } catch (error) {
-                showResponse('updateResponse', { 
-                    error: '카메라 접근 실패: ' + error.message 
-                }, false);
+                console.error('카메라 접근 실패:', error);
+                alert('카메라 접근에 실패했습니다: ' + error.message);
             }
         }
 
@@ -373,24 +202,169 @@
             const preview = document.getElementById('cameraPreview');
             preview.innerHTML = '카메라가 중지되었습니다';
             
-            showResponse('updateResponse', { 
-                status: 'success', 
-                message: '카메라가 중지되었습니다.' 
-            }, true);
+            // 감정 분석도 중지
+            stopEmotionAnalysis();
+            
+            console.log('카메라가 중지되었습니다.');
         }
 
-        // 응답 표시
-        function showResponse(elementId, data, isSuccess) {
-            const element = document.getElementById(elementId);
-            element.style.display = 'block';
-            element.className = `response ${isSuccess ? 'success' : 'error'}`;
-            element.textContent = JSON.stringify(data, null, 2);
+        // 감정 분석 시작
+        function startEmotionAnalysis() {
+            if (!stream) {
+                alert('먼저 카메라를 시작해주세요.');
+                return;
+            }
+
+            if (isEmotionAnalysisActive) {
+                alert('감정 분석이 이미 실행 중입니다.');
+                return;
+            }
+
+            const interval = parseInt(document.getElementById('captureInterval').value) * 1000;
+            
+            isEmotionAnalysisActive = true;
+            updateEmotionStatus(true);
+            
+            // 결과 영역 초기화
+            document.getElementById('emotionResults').innerHTML = '';
+            
+            // 즉시 첫 번째 분석 실행
+            captureAndAnalyze();
+            
+            // 주기적으로 분석 실행
+            emotionAnalysisInterval = setInterval(captureAndAnalyze, interval);
+            
+            console.log(`감정 분석이 시작되었습니다. (${interval/1000}초 간격)`);
         }
 
-        // 페이지 로드 시 서비스 상태 확인
-        window.onload = function() {
-            checkHealth();
-        };
+        // 감정 분석 중지
+        function stopEmotionAnalysis() {
+            if (emotionAnalysisInterval) {
+                clearInterval(emotionAnalysisInterval);
+                emotionAnalysisInterval = null;
+            }
+            
+            isEmotionAnalysisActive = false;
+            updateEmotionStatus(false);
+            
+            console.log('감정 분석이 중지되었습니다.');
+        }
+
+        // 사진 캡처 및 감정 분석
+        async function captureAndAnalyze() {
+            if (!stream || !isEmotionAnalysisActive) {
+                return;
+            }
+
+            try {
+                // 비디오에서 캔버스로 프레임 캡처
+                const video = document.querySelector('#cameraPreview video');
+                if (!video) {
+                    console.error('비디오 요소를 찾을 수 없습니다.');
+                    return;
+                }
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // 캔버스를 Blob으로 변환
+                const blob = await new Promise(resolve => {
+                    canvas.toBlob(resolve, 'image/jpeg', 0.8);
+                });
+
+                // FormData 생성
+                const formData = new FormData();
+                formData.append('file', blob, 'capture.jpg');
+
+                // YOLO API 호출
+                const response = await fetch(YOLO_API_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                // 결과 표시
+                const timestamp = new Date().toLocaleTimeString();
+                displayEmotionResult(timestamp, result);
+                
+                console.log('감정 분석 결과:', result);
+                
+            } catch (error) {
+                console.error('감정 분석 오류:', error);
+                const timestamp = new Date().toLocaleTimeString();
+                displayEmotionError(timestamp, error.message);
+            }
+        }
+
+        // 감정 분석 상태 업데이트
+        function updateEmotionStatus(isActive) {
+            const statusElement = document.getElementById('emotionStatus');
+            const indicator = statusElement.querySelector('.status-indicator');
+            const text = statusElement.querySelector('span:last-child');
+            
+            if (isActive) {
+                indicator.className = 'status-indicator status-recording';
+                text.textContent = '감정 분석 실행 중...';
+            } else {
+                indicator.className = 'status-indicator status-inactive';
+                text.textContent = '감정 분석 중지됨';
+            }
+        }
+
+        // 감정 분석 결과 표시
+        function displayEmotionResult(timestamp, result) {
+            const resultsContainer = document.getElementById('emotionResults');
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'emotion-result';
+            
+            const confidencePercent = Math.round(result.confidence * 100);
+            
+            resultDiv.innerHTML = `
+                <div><strong>시간:</strong> ${timestamp}</div>
+                <div><strong>감정:</strong> ${result.emotion}</div>
+                <div><strong>신뢰도:</strong> ${confidencePercent}%</div>
+                <div><strong>바운딩 박스:</strong> [${result.bounding_box.join(', ')}]</div>
+            `;
+            
+            // 최신 결과를 맨 위에 추가
+            resultsContainer.insertBefore(resultDiv, resultsContainer.firstChild);
+            
+            // 최대 10개 결과만 유지
+            while (resultsContainer.children.length > 10) {
+                resultsContainer.removeChild(resultsContainer.lastChild);
+            }
+        }
+
+        // 감정 분석 에러 표시
+        function displayEmotionError(timestamp, errorMessage) {
+            const resultsContainer = document.getElementById('emotionResults');
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'emotion-result error';
+            
+            errorDiv.innerHTML = `
+                <div><strong>시간:</strong> ${timestamp}</div>
+                <div><strong>에러:</strong> ${errorMessage}</div>
+            `;
+            
+            // 최신 에러를 맨 위에 추가
+            resultsContainer.insertBefore(errorDiv, resultsContainer.firstChild);
+            
+            // 최대 10개 결과만 유지
+            while (resultsContainer.children.length > 10) {
+                resultsContainer.removeChild(resultsContainer.lastChild);
+            }
+        }
     </script>
 </body>
 </html> 

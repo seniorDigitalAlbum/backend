@@ -193,7 +193,7 @@ public class UserEmotionAnalysisService {
             
             // 감정 변환
             String facialEmotionKorean = emotionMapping.get(facialEmotionEnglish);
-            String speechEmotionKorean = (String) speechData.get("emotion");
+            String speechEmotionKorean = (String) speechData.get("predicted_label");
             
             // Neutral 감정은 계산 대상에서 제외
             boolean isFacialNeutral = "neutral".equals(facialEmotionEnglish) || 

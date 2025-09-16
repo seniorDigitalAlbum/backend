@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>감정 통합 계산 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .input-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .input-box {
+            flex: 1;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .example {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .example h4 {
+            margin-top: 0;
+            color: #0066cc;
+        }
+        .example pre {
+            margin: 5px 0;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 감정 통합 계산 테스트</h1>
+        <p>facialEmotion과 speechEmotion을 입력하여 combinedEmotion 계산 과정을 상세히 확인할 수 있습니다.</p>
+        
+        <div class="example">
+            <h4>📝 사용 예시</h4>
+            <p><strong>Facial Emotion JSON:</strong></p>
+            <pre>{
+  "finalEmotion": "joy",
+  "totalCaptures": 10,
+  "emotionCounts": {
+    "joy": 7,
+    "neutral": 3
+  },
+  "averageConfidence": 0.85,
+  "emotionDetails": [
+    {"emotion": "joy", "confidence": 0.9},
+    {"emotion": "joy", "confidence": 0.8},
+    {"emotion": "neutral", "confidence": 0.7}
+  ]
+}</pre>
+            
+            <p><strong>Speech Emotion JSON:</strong></p>
+            <pre>{
+  "predicted_label": "기쁨",
+  "confidence": 0.92,
+  "all_probabilities": {
+    "기쁨": 0.92,
+    "슬픔": 0.05,
+    "분노": 0.02,
+    "불안": 0.01
+  }
+}</pre>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📊 입력 데이터</h2>
+        <div class="input-section">
+            <div class="input-box">
+                <h3>Facial Emotion JSON</h3>
+                <textarea id="facialInput" placeholder="Facial Emotion JSON을 입력하세요...">{
+  "finalEmotion": "joy",
+  "totalCaptures": 10,
+  "emotionCounts": {
+    "joy": 7,
+    "neutral": 3
+  },
+  "averageConfidence": 0.85,
+  "emotionDetails": [
+    {"emotion": "joy", "confidence": 0.9},
+    {"emotion": "joy", "confidence": 0.8},
+    {"emotion": "neutral", "confidence": 0.7}
+  ]
+}</textarea>
+            </div>
+            <div class="input-box">
+                <h3>Speech Emotion JSON</h3>
+                <textarea id="speechInput" placeholder="Speech Emotion JSON을 입력하세요...">{
+  "predicted_label": "기쁨",
+  "confidence": 0.92,
+  "all_probabilities": {
+    "기쁨": 0.92,
+    "슬픔": 0.05,
+    "분노": 0.02,
+    "불안": 0.01
+  }
+}</textarea>
+            </div>
+        </div>
+        
+        <button onclick="testCombineEmotion()">🚀 감정 통합 계산 테스트</button>
+    </div>
+
+    <div class="container">
+        <h2>📈 계산 결과</h2>
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api/emotion-analysis/test';
+
+        async function testCombineEmotion() {
+            const facialInput = document.getElementById('facialInput').value.trim();
+            const speechInput = document.getElementById('speechInput').value.trim();
+            const resultDiv = document.getElementById('result');
+
+            if (!facialInput || !speechInput) {
+                showError('Facial Emotion JSON과 Speech Emotion JSON을 모두 입력해주세요.');
+                return;
+            }
+
+            try {
+                // JSON 유효성 검사
+                JSON.parse(facialInput);
+                JSON.parse(speechInput);
+            } catch (e) {
+                showError('JSON 형식이 올바르지 않습니다: ' + e.message);
+                return;
+            }
+
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.textContent = '계산 중...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/combine-calculation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        facialEmotionJson: facialInput,
+                        speechEmotionJson: speechInput
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult(data);
+                } else {
+                    showError(`API 오류: ${data.message || '알 수 없는 오류'}`);
+                }
+            } catch (error) {
+                showError(`네트워크 오류: ${error.message}`);
+            }
+        }
+
+        function showResult(data) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result';
+            resultDiv.textContent = JSON.stringify(data, null, 2);
+        }
+
+        function showError(message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result error';
+            resultDiv.textContent = `❌ 오류: ${message}`;
+        }
+    </script>
+</body>
+</html>

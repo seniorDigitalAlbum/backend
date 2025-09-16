@@ -44,6 +44,11 @@ public class UserEmotionAnalysis {
     @Schema(description = "통합된 최종 신뢰도", example = "0.88")
     private Double combinedConfidence;
     
+    @Column(name = "combined_distribution", columnDefinition = "JSON")
+    @Schema(description = "통합 확률 분포(JSON)", 
+            example = "{\"기쁨\":0.62,\"당황\":0.06,\"분노\":0.05,\"불안\":0.09,\"상처\":0.07,\"슬픔\":0.11}")
+    private String combinedDistribution;  // p_fused 저장
+    
     @Column(name = "analysis_timestamp", nullable = false)
     @Schema(description = "감정 분석 수행 시간")
     private LocalDateTime analysisTimestamp;

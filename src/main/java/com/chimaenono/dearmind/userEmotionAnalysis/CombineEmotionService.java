@@ -71,6 +71,14 @@ public class CombineEmotionService {
         analysis.setCombinedEmotion(combinedResult.getEmotion());
         analysis.setCombinedConfidence(combinedResult.getConfidence());
         
+        // 통합 확률 분포를 JSON으로 변환하여 저장
+        try {
+            String combinedDistributionJson = objectMapper.writeValueAsString(combinedResult.getPFused());
+            analysis.setCombinedDistribution(combinedDistributionJson);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("통합 확률 분포 JSON 변환 실패: " + e.getMessage());
+        }
+        
         UserEmotionAnalysis updatedAnalysis = userEmotionAnalysisRepository.save(analysis);
         
         // 5. 응답 반환
@@ -233,7 +241,7 @@ public class CombineEmotionService {
         double finalConf = acc.get(finalKr);
         String finalEn = toEn(finalKr);
 
-        return new CombinedEmotionResult(finalEn, finalConf);
+        return new CombinedEmotionResult(finalEn, finalConf, acc);
     }
 
     // === 테스트용 API: 감정 통합 계산 과정 상세 조회 ===
@@ -353,7 +361,7 @@ public class CombineEmotionService {
                 "finalEmotionKorean", finalKr,
                 "finalEmotionEnglish", finalEn,
                 "finalConfidence", finalConf,
-                "combinedEmotionResult", new CombinedEmotionResult(finalEn, finalConf)
+                "combinedEmotionResult", new CombinedEmotionResult(finalEn, finalConf, normalizedAcc)
             ));
             
             return result;
@@ -406,13 +414,16 @@ public class CombineEmotionService {
     private static class CombinedEmotionResult {
         private final String emotion;
         private final Double confidence;
+        private final Map<String, Double> pFused; // 통합 확률 분포
         
-        public CombinedEmotionResult(String emotion, Double confidence) {
+        public CombinedEmotionResult(String emotion, Double confidence, Map<String, Double> pFused) {
             this.emotion = emotion;
             this.confidence = confidence;
+            this.pFused = pFused;
         }
         
         public String getEmotion() { return emotion; }
         public Double getConfidence() { return confidence; }
+        public Map<String, Double> getPFused() { return pFused; }
     }
 }

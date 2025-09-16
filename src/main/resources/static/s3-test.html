@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S3 파일 관리 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="file"], input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .file-info {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗂️ S3 파일 관리 테스트</h1>
+        <p>일기장 표지 추천과 사용자 사진 업로드를 위한 S3 기본 기능을 테스트합니다.</p>
+    </div>
+
+    <!-- 파일 업로드 테스트 -->
+    <div class="container">
+        <h2>📤 파일 업로드 테스트</h2>
+        
+        <div class="form-group">
+            <label for="fileInput">업로드할 파일 선택:</label>
+            <input type="file" id="fileInput" accept="image/*,.pdf,.doc,.docx">
+        </div>
+        
+        <div class="form-group">
+            <label for="folderSelect">폴더 선택:</label>
+            <select id="folderSelect">
+                <option value="diary-covers">일기장 표지 (diary-covers)</option>
+                <option value="user-photos">사용자 사진 (user-photos)</option>
+                <option value="test">테스트 폴더 (test)</option>
+            </select>
+        </div>
+        
+        <button onclick="uploadFile()">파일 업로드</button>
+        <button onclick="uploadDiaryCover()">일기장 표지 업로드</button>
+        <button onclick="uploadUserPhoto()">사용자 사진 업로드</button>
+        
+        <div id="uploadResult" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- 파일 관리 테스트 -->
+    <div class="container">
+        <h2>🔍 파일 관리 테스트</h2>
+        
+        <div class="form-group">
+            <label for="fileUrlInput">S3 파일 URL:</label>
+            <input type="text" id="fileUrlInput" placeholder="https://your-bucket.s3.region.amazonaws.com/folder/filename">
+        </div>
+        
+        <button onclick="checkFileExists()">파일 존재 확인</button>
+        <button onclick="downloadFile()" style="background-color: #28a745;">파일 다운로드</button>
+        <button onclick="getFileMetadata()" style="background-color: #17a2b8;">메타데이터 조회</button>
+        <button onclick="deleteFile()" style="background-color: #dc3545;">파일 삭제</button>
+        
+        <div id="managementResult" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- 업로드된 파일 목록 -->
+    <div class="container">
+        <h2>📋 업로드된 파일 목록</h2>
+        <div id="fileList" class="file-info">
+            <p>파일을 업로드하면 여기에 표시됩니다.</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://dearmind-backend-837765001467.asia-northeast3.run.app/api/s3';
+        let uploadedFiles = [];
+
+        // 파일 업로드
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const folderSelect = document.getElementById('folderSelect');
+            const resultDiv = document.getElementById('uploadResult');
+            
+            if (!fileInput.files[0]) {
+                showResult(resultDiv, '파일을 선택해주세요.', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('folder', folderSelect.value);
+
+            try {
+                showResult(resultDiv, '파일 업로드 중...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResult(resultDiv, `업로드 성공!\n파일 URL: ${result.fileUrl}`, 'success');
+                    addToFileList(result.fileUrl, fileInput.files[0].name);
+                } else {
+                    showResult(resultDiv, `업로드 실패: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `업로드 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 일기장 표지 업로드
+        async function uploadDiaryCover() {
+            const fileInput = document.getElementById('fileInput');
+            const resultDiv = document.getElementById('uploadResult');
+            
+            if (!fileInput.files[0]) {
+                showResult(resultDiv, '파일을 선택해주세요.', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                showResult(resultDiv, '일기장 표지 업로드 중...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/upload/diary-cover`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResult(resultDiv, `일기장 표지 업로드 성공!\n파일 URL: ${result.fileUrl}`, 'success');
+                    addToFileList(result.fileUrl, fileInput.files[0].name);
+                } else {
+                    showResult(resultDiv, `업로드 실패: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `업로드 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 사용자 사진 업로드
+        async function uploadUserPhoto() {
+            const fileInput = document.getElementById('fileInput');
+            const resultDiv = document.getElementById('uploadResult');
+            
+            if (!fileInput.files[0]) {
+                showResult(resultDiv, '파일을 선택해주세요.', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                showResult(resultDiv, '사용자 사진 업로드 중...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/upload/user-photo`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResult(resultDiv, `사용자 사진 업로드 성공!\n파일 URL: ${result.fileUrl}`, 'success');
+                    addToFileList(result.fileUrl, fileInput.files[0].name);
+                } else {
+                    showResult(resultDiv, `업로드 실패: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `업로드 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 파일 존재 확인
+        async function checkFileExists() {
+            const fileUrlInput = document.getElementById('fileUrlInput');
+            const resultDiv = document.getElementById('managementResult');
+            
+            if (!fileUrlInput.value) {
+                showResult(resultDiv, '파일 URL을 입력해주세요.', 'error');
+                return;
+            }
+
+            try {
+                showResult(resultDiv, '파일 존재 확인 중...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/exists?fileUrl=${encodeURIComponent(fileUrlInput.value)}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const status = result.exists ? '존재합니다' : '존재하지 않습니다';
+                    showResult(resultDiv, `파일 ${status}\nURL: ${fileUrlInput.value}`, result.exists ? 'success' : 'error');
+                } else {
+                    showResult(resultDiv, `확인 실패: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `확인 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 파일 다운로드
+        async function downloadFile() {
+            const fileUrlInput = document.getElementById('fileUrlInput');
+            const resultDiv = document.getElementById('managementResult');
+            
+            if (!fileUrlInput.value) {
+                showResult(resultDiv, '파일 URL을 입력해주세요.', 'error');
+                return;
+            }
+
+            try {
+                showResult(resultDiv, '파일 다운로드 중...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/download?fileUrl=${encodeURIComponent(fileUrlInput.value)}`);
+                
+                if (response.ok) {
+                    // 파일명 추출
+                    const fileName = fileUrlInput.value.split('/').pop() || 'download';
+                    
+                    // Blob으로 변환하여 다운로드
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showResult(resultDiv, `파일 다운로드 성공!\n파일명: ${fileName}`, 'success');
+                } else {
+                    showResult(resultDiv, `다운로드 실패: HTTP ${response.status}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `다운로드 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 파일 메타데이터 조회
+        async function getFileMetadata() {
+            const fileUrlInput = document.getElementById('fileUrlInput');
+            const resultDiv = document.getElementById('managementResult');
+            
+            if (!fileUrlInput.value) {
+                showResult(resultDiv, '파일 URL을 입력해주세요.', 'error');
+                return;
+            }
+
+            try {
+                showResult(resultDiv, '메타데이터 조회 중...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/metadata?fileUrl=${encodeURIComponent(fileUrlInput.value)}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const metadata = result.metadata;
+                    const metadataText = `메타데이터 조회 성공!
+파일 타입: ${metadata.contentType}
+파일 크기: ${metadata.contentLength} bytes
+마지막 수정: ${metadata.lastModified}
+ETag: ${metadata.etag}`;
+                    showResult(resultDiv, metadataText, 'success');
+                } else {
+                    showResult(resultDiv, `메타데이터 조회 실패: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `메타데이터 조회 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 파일 삭제
+        async function deleteFile() {
+            const fileUrlInput = document.getElementById('fileUrlInput');
+            const resultDiv = document.getElementById('managementResult');
+            
+            if (!fileUrlInput.value) {
+                showResult(resultDiv, '파일 URL을 입력해주세요.', 'error');
+                return;
+            }
+
+            if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) {
+                return;
+            }
+
+            try {
+                showResult(resultDiv, '파일 삭제 중...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/delete?fileUrl=${encodeURIComponent(fileUrlInput.value)}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResult(resultDiv, `파일 삭제 성공!\nURL: ${fileUrlInput.value}`, 'success');
+                    removeFromFileList(fileUrlInput.value);
+                } else {
+                    showResult(resultDiv, `삭제 실패: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `삭제 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 결과 표시
+        function showResult(element, message, type) {
+            element.textContent = message;
+            element.className = `result ${type}`;
+            element.style.display = 'block';
+        }
+
+        // 파일 목록에 추가
+        function addToFileList(fileUrl, fileName) {
+            uploadedFiles.push({ url: fileUrl, name: fileName });
+            updateFileList();
+        }
+
+        // 파일 목록에서 제거
+        function removeFromFileList(fileUrl) {
+            uploadedFiles = uploadedFiles.filter(file => file.url !== fileUrl);
+            updateFileList();
+        }
+
+        // 파일 목록 업데이트
+        function updateFileList() {
+            const fileListDiv = document.getElementById('fileList');
+            
+            if (uploadedFiles.length === 0) {
+                fileListDiv.innerHTML = '<p>업로드된 파일이 없습니다.</p>';
+                return;
+            }
+
+            let html = '<h3>업로드된 파일:</h3>';
+            uploadedFiles.forEach((file, index) => {
+                html += `
+                    <div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                        <strong>${file.name}</strong><br>
+                        <small style="color: #666; word-break: break-all;">${file.url}</small><br>
+                        <button onclick="copyToClipboard('${file.url}')" style="margin-top: 5px; padding: 5px 10px; font-size: 12px;">URL 복사</button>
+                        <button onclick="setFileUrl('${file.url}')" style="margin-top: 5px; padding: 5px 10px; font-size: 12px; background-color: #28a745;">URL 설정</button>
+                        <button onclick="downloadFileDirect('${file.url}', '${file.name}')" style="margin-top: 5px; padding: 5px 10px; font-size: 12px; background-color: #007bff;">다운로드</button>
+                    </div>
+                `;
+            });
+            
+            fileListDiv.innerHTML = html;
+        }
+
+        // 클립보드에 복사
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('URL이 클립보드에 복사되었습니다.');
+            });
+        }
+
+        // 파일 URL 입력 필드에 설정
+        function setFileUrl(url) {
+            document.getElementById('fileUrlInput').value = url;
+        }
+
+        // 직접 다운로드 (파일 목록에서)
+        async function downloadFileDirect(fileUrl, fileName) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/download?fileUrl=${encodeURIComponent(fileUrl)}`);
+                
+                if (response.ok) {
+                    // Blob으로 변환하여 다운로드
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    alert(`파일 다운로드 성공!\n파일명: ${fileName}`);
+                } else {
+                    alert(`다운로드 실패: HTTP ${response.status}`);
+                }
+            } catch (error) {
+                alert(`다운로드 오류: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

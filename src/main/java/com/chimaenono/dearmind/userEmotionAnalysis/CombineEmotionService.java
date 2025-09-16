@@ -261,10 +261,24 @@ public class CombineEmotionService {
                 "speech_allProbabilities", speech.get("all_probabilities")
             ));
             
-            // 2) 텍스트 분포/신뢰도
-            Map<String, Object> allProbsRaw = (Map<String, Object>) speech.get("all_probabilities");
+            // 2) 텍스트 분포/신뢰도 - 실제 DB 저장 형식에 맞게 파싱
+            Map<String, Object> allProbsRaw;
+            double speechConf;
+            
+            // analysisResult 구조인지 확인
+            if (speech.containsKey("analysisResult")) {
+                // 새로운 형식: {"text": "...", "analysisResult": {"details": {...}}}
+                Map<String, Object> analysisResult = (Map<String, Object>) speech.get("analysisResult");
+                Map<String, Object> details = (Map<String, Object>) analysisResult.get("details");
+                allProbsRaw = (Map<String, Object>) details.get("all_probabilities");
+                speechConf = ((Number) details.getOrDefault("confidence", 0.0)).doubleValue();
+            } else {
+                // 기존 형식: {"predicted_label": "...", "confidence": ..., "all_probabilities": {...}}
+                allProbsRaw = (Map<String, Object>) speech.get("all_probabilities");
+                speechConf = ((Number) speech.getOrDefault("confidence", 0.0)).doubleValue();
+            }
+            
             Map<String, Double> pTxt = normalizeTo6(allProbsRaw);
-            double speechConf = ((Number) speech.getOrDefault("confidence", 0.0)).doubleValue();
             
             result.put("3_텍스트_분석", Map.of(
                 "speechConfidence", speechConf,
@@ -356,10 +370,24 @@ public class CombineEmotionService {
             FacialEmotionData facial = objectMapper.readValue(facialEmotionJson, FacialEmotionData.class);
             Map<String, Object> speech = objectMapper.readValue(speechEmotionJson, Map.class);
 
-            // 2) 텍스트 분포/신뢰도
-            Map<String, Object> allProbsRaw = (Map<String, Object>) speech.get("all_probabilities");
+            // 2) 텍스트 분포/신뢰도 - 실제 DB 저장 형식에 맞게 파싱
+            Map<String, Object> allProbsRaw;
+            double speechConf;
+            
+            // analysisResult 구조인지 확인
+            if (speech.containsKey("analysisResult")) {
+                // 새로운 형식: {"text": "...", "analysisResult": {"details": {...}}}
+                Map<String, Object> analysisResult = (Map<String, Object>) speech.get("analysisResult");
+                Map<String, Object> details = (Map<String, Object>) analysisResult.get("details");
+                allProbsRaw = (Map<String, Object>) details.get("all_probabilities");
+                speechConf = ((Number) details.getOrDefault("confidence", 0.0)).doubleValue();
+            } else {
+                // 기존 형식: {"predicted_label": "...", "confidence": ..., "all_probabilities": {...}}
+                allProbsRaw = (Map<String, Object>) speech.get("all_probabilities");
+                speechConf = ((Number) speech.getOrDefault("confidence", 0.0)).doubleValue();
+            }
+            
             Map<String, Double> pTxt = normalizeTo6(allProbsRaw);
-            double speechConf = ((Number) speech.getOrDefault("confidence", 0.0)).doubleValue();
 
             // 3) 얼굴: 프레임 -> 7라벨 분포 -> 6라벨로 변환
             Map<String, Double> pFace7 = buildFaceDist7(facial);

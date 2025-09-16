@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 
 import com.chimaenono.dearmind.conversation.ConversationService;
+import com.chimaenono.dearmind.conversation.EmotionFlowService;
 import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
 import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysis;
 import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysisRepository;
@@ -48,6 +49,9 @@ public class GPTService {
     
     @Autowired
     private ConversationService conversationService;
+    
+    @Autowired
+    private EmotionFlowService emotionFlowService;
     
     @Autowired
     private UserEmotionAnalysisRepository userEmotionAnalysisRepository;
@@ -314,8 +318,8 @@ public class GPTService {
         // 감정 요약 생성 및 저장
         String emotionSummary = createEmotionSummary(emotions);
         
-        // 통합된 감정 분석 결과를 Conversation 테이블에 저장
-        saveConversationEmotionAnalysis(conversationId, emotions);
+        // 감정 흐름 분석 결과를 Conversation 테이블에 저장
+        emotionFlowService.computeAndSaveFlow(conversationId);
         
         // 프롬프트 구성
         StringBuilder promptBuilder = new StringBuilder();
@@ -404,50 +408,6 @@ public class GPTService {
             dominantEmotion, averageConfidence, emotionCounts.toString());
     }
     
-    /**
-     * 통합된 감정 분석 결과를 Conversation 테이블에 저장합니다.
-     */
-    private void saveConversationEmotionAnalysis(Long conversationId, List<UserEmotionAnalysis> emotions) {
-        if (emotions.isEmpty()) {
-            conversationService.saveConversationEmotionAnalysis(conversationId, "중립", 0.0, "{}");
-            return;
-        }
-        
-        Map<String, Integer> emotionCounts = new HashMap<>();
-        double totalConfidence = 0.0;
-        int analyzedCount = 0;
-        
-        for (UserEmotionAnalysis emotion : emotions) {
-            if (emotion.getCombinedEmotion() != null && !emotion.getCombinedEmotion().isEmpty()) {
-                String emotionType = emotion.getCombinedEmotion();
-                emotionCounts.put(emotionType, emotionCounts.getOrDefault(emotionType, 0) + 1);
-                
-                if (emotion.getCombinedConfidence() != null) {
-                    totalConfidence += emotion.getCombinedConfidence();
-                    analyzedCount++;
-                }
-            }
-        }
-        
-        // 주요 감정 찾기
-        String dominantEmotion = "중립";
-        int maxCount = 0;
-        for (Map.Entry<String, Integer> entry : emotionCounts.entrySet()) {
-            if (entry.getValue() > maxCount) {
-                maxCount = entry.getValue();
-                dominantEmotion = entry.getKey();
-            }
-        }
-        
-        // 평균 신뢰도 계산
-        double averageConfidence = analyzedCount > 0 ? totalConfidence / analyzedCount : 0.0;
-        
-        // JSON 형태로 감정 분포 저장 (올바른 JSON 형식으로 변환)
-        String emotionDistribution = convertMapToJson(emotionCounts);
-        
-        // Conversation 테이블에 저장
-        conversationService.saveConversationEmotionAnalysis(conversationId, dominantEmotion, averageConfidence, emotionDistribution);
-    }
     
     /**
      * 일기 내용과 감정을 바탕으로 음악을 추천합니다.

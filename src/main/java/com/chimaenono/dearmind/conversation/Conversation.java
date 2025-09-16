@@ -60,17 +60,13 @@ public class Conversation {
     @Schema(description = "처리 상태", example = "READY")
     private ProcessingStatus processingStatus;
     
-    @Column(name = "dominant_emotion")
-    @Schema(description = "주요 감정", example = "기쁨")
-    private String dominantEmotion;
+    @Column(name = "flow_pattern")
+    @Schema(description = "대화 감정 패턴", example = "U-shape")
+    private String flowPattern;                 // "U-shape" 등
     
-    @Column(name = "emotion_confidence")
-    @Schema(description = "감정 신뢰도", example = "0.85")
-    private Double emotionConfidence;
-    
-    @Column(name = "emotion_distribution", columnDefinition = "JSON")
-    @Schema(description = "감정 분포", example = "{\"기쁨\": 4, \"슬픔\": 1}")
-    private String emotionDistribution;
+    @Column(name = "emotion_flow", columnDefinition = "JSON")
+    @Schema(description = "대화 감정 흐름 JSON", example = "{\"segments\":[...], \"metrics\":{...}}")
+    private String emotionFlow;                 // segments + metrics 전체 JSON
     
     public enum ConversationStatus {
         ACTIVE, COMPLETED, PAUSED

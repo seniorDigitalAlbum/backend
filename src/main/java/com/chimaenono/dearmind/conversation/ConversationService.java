@@ -405,15 +405,13 @@ public class ConversationService {
         return null;
     }
     
-    @Operation(summary = "대화 감정 분석 결과 저장", description = "대화의 통합된 감정 분석 결과를 저장합니다")
-    public void saveConversationEmotionAnalysis(Long conversationId, String dominantEmotion, 
-                                               Double emotionConfidence, String emotionDistribution) {
+    @Operation(summary = "대화 감정 흐름 분석 결과 저장", description = "대화의 감정 흐름 분석 결과를 저장합니다")
+    public void saveConversationFlowAnalysis(Long conversationId, String flowPattern, String emotionFlow) {
         Optional<Conversation> conversationOpt = conversationRepository.findById(conversationId);
         if (conversationOpt.isPresent()) {
             Conversation conversation = conversationOpt.get();
-            conversation.setDominantEmotion(dominantEmotion);
-            conversation.setEmotionConfidence(emotionConfidence);
-            conversation.setEmotionDistribution(emotionDistribution);
+            conversation.setFlowPattern(flowPattern);
+            conversation.setEmotionFlow(emotionFlow);
             conversationRepository.save(conversation);
         }
     }

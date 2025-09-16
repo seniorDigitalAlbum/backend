@@ -30,6 +30,9 @@ public class UserEmotionAnalysisController {
     @Autowired
     private CombineEmotionService combineEmotionService;
     
+    @Autowired
+    private UserEmotionAnalysisRepository userEmotionAnalysisRepository;
+    
     
     @Operation(summary = "특정 메시지의 감정 분석 결과 조회", 
                description = "대화 메시지 ID로 감정 분석 결과를 조회합니다.")
@@ -191,5 +194,48 @@ public class UserEmotionAnalysisController {
     @GetMapping("/health")
     public ResponseEntity<String> healthCheck() {
         return ResponseEntity.ok("Emotion Analysis service is running");
+    }
+    
+    @Operation(summary = "감정 분석 결과 조회", 
+               description = "conversationMessageId로 감정 분석 결과를 조회합니다.")
+    @GetMapping("/{conversationMessageId}")
+    public ResponseEntity<?> getEmotionAnalysis(
+            @Parameter(description = "대화 메시지 ID", required = true)
+            @PathVariable Long conversationMessageId) {
+        
+        try {
+            Optional<UserEmotionAnalysis> analysis = userEmotionAnalysisRepository
+                    .findByConversationMessageId(conversationMessageId);
+            
+            if (analysis.isPresent()) {
+                UserEmotionAnalysis result = analysis.get();
+                
+                // combinedDistribution이 null이 아닌지 확인
+                String distributionStatus = result.getCombinedDistribution() != null ? 
+                    "✅ 저장됨" : "❌ null";
+                
+                Map<String, Object> response = Map.of(
+                    "id", result.getId(),
+                    "conversationMessageId", conversationMessageId,
+                    "combinedEmotion", result.getCombinedEmotion() != null ? result.getCombinedEmotion() : "null",
+                    "combinedConfidence", result.getCombinedConfidence() != null ? result.getCombinedConfidence() : "null",
+                    "combinedDistribution", result.getCombinedDistribution() != null ? result.getCombinedDistribution() : "null",
+                    "distributionStatus", distributionStatus,
+                    "analysisTimestamp", result.getAnalysisTimestamp()
+                );
+                
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "감정 분석 결과를 찾을 수 없습니다.", 
+                                   "conversationMessageId", conversationMessageId));
+            }
+            
+        } catch (Exception e) {
+            log.error("감정 분석 결과 조회 중 오류 발생: conversationMessageId={}", conversationMessageId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "감정 분석 결과 조회 중 오류가 발생했습니다.", 
+                               "message", e.getMessage()));
+        }
     }
 }

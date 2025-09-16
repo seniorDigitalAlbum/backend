@@ -15,7 +15,9 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/emotion-analysis")
 @Tag(name = "UserEmotionAnalysis", description = "사용자 감정 분석 관리 API")

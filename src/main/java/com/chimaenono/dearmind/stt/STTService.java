@@ -76,8 +76,22 @@ public class STTService {
                 Map<String, Object> responseMap = mapper.readValue(response.body(), Map.class);
                 
                 if (responseMap.containsKey("text")) {
+                    String transcribedText = (String) responseMap.get("text");
+                    
+                    // 텍스트 검증
+                    if (!isValidKoreanText(transcribedText)) {
+                        return new STTResponse(
+                            null,
+                            language != null ? language : "unknown",
+                            0.0,
+                            duration,
+                            "error",
+                            "음성을 인식할 수 없습니다. 다시 말씀해주세요."
+                        );
+                    }
+                    
                     return new STTResponse(
-                        (String) responseMap.get("text"),
+                        transcribedText,
                         language != null ? language : "unknown",
                         0.95,
                         duration,
@@ -125,5 +139,18 @@ public class STTService {
         return transcribeAudio(audioData, "wav", "ko");
     }
 
+    /**
+     * 한국어 텍스트 유효성 검증
+     * @param text 검증할 텍스트
+     * @return 유효한 한국어 텍스트인지 여부
+     */
+    private boolean isValidKoreanText(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return false;
+        }
+        
+        // 한국어 문자, 공백, 기본 구두점만 허용
+        return text.matches("^[가-힣\\s.,!?]*$");
+    }
 
 } 

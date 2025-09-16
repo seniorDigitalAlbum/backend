@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -156,15 +157,27 @@ public class UserEmotionAnalysisController {
         @ApiResponse(responseCode = "404", description = "감정 분석 데이터를 찾을 수 없음"),
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    public ResponseEntity<UserEmotionAnalysisResponse> combineEmotions(
+    public ResponseEntity<?> combineEmotions(
             @Valid @RequestBody CombineEmotionRequest request) {
         try {
             UserEmotionAnalysisResponse response = combineEmotionService.combineEmotions(request.getConversationMessageId());
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            log.error("감정 통합 계산 실패: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(
+                    "error", "감정 통합 계산 실패",
+                    "message", e.getMessage(),
+                    "conversationMessageId", request.getConversationMessageId()
+                ));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            log.error("감정 통합 계산 중 서버 오류: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "error", "서버 내부 오류",
+                    "message", e.getMessage(),
+                    "conversationMessageId", request.getConversationMessageId()
+                ));
         }
     }
     

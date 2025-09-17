@@ -52,14 +52,15 @@ public class ConversationSummaryResponse {
     @AllArgsConstructor
     @Schema(description = "감정 분석 요약 정보")
     public static class EmotionSummary {
-        @Schema(description = "주요 감정", example = "기쁨")
-        private String dominantEmotion;
+        // TODO: 기존 감정 필드 - 새로운 감정 흐름 분석으로 대체 예정
+        // @Schema(description = "주요 감정", example = "기쁨")
+        // private String dominantEmotion;
         
         @Schema(description = "감정별 개수", example = "{\"기쁨\": 3, \"슬픔\": 1, \"중립\": 1}")
         private Map<String, Integer> emotionCounts;
         
-        @Schema(description = "평균 신뢰도", example = "0.85")
-        private Double averageConfidence;
+        // @Schema(description = "평균 신뢰도", example = "0.85")
+        // private Double averageConfidence;
         
         @Schema(description = "감정 분석된 메시지 수", example = "5")
         private Integer analyzedMessageCount;

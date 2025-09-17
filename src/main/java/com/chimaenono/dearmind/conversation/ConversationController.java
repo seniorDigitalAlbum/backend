@@ -5,8 +5,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
-import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysis;
-import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysisRepository;
 import com.chimaenono.dearmind.music.MusicRecommendation;
 import com.chimaenono.dearmind.music.MusicRecommendationService;
 
@@ -19,10 +17,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
-import java.util.HashMap;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.type.TypeReference;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/conversations")
 @Tag(name = "Conversation API", description = "AI&사용자 대화 세션 관리 API")
@@ -38,11 +36,15 @@ public class ConversationController {
     @Autowired
     private AsyncService asyncService;
     
-    @Autowired
-    private UserEmotionAnalysisRepository userEmotionAnalysisRepository;
     
     @Autowired
     private MusicRecommendationService musicRecommendationService;
+    
+    @Autowired
+    private com.chimaenono.dearmind.diary.DiaryPlanService diaryPlanService;
+    
+    @Autowired
+    private ObjectMapper objectMapper;
     
     @PostMapping("/start")
     @Operation(summary = "대화 시작 (통합)", description = "카메라 세션, 마이크 세션, 대화방을 통합으로 생성합니다")
@@ -299,23 +301,34 @@ public class ConversationController {
                         .body(DiaryResponse.error("일기가 아직 생성되지 않았습니다."));
             }
             
-            // 저장된 감정 분석 결과 사용
-            DiaryResponse.EmotionSummary emotionSummary = createEmotionSummaryFromConversation(conversation);
+            // DiaryPlan과 Summary 생성 (음악 추천용)
+            com.chimaenono.dearmind.diary.DiaryPlan diaryPlan = null;
+            com.chimaenono.dearmind.diary.Summary summary = null;
+            
+            try {
+                // DiaryPlanService를 통해 DiaryPlan 생성
+                if (diaryPlanService != null) {
+                    diaryPlan = diaryPlanService.buildDiaryPlan(conversationId);
+                }
+                
+                // Summary 파싱 (JSON 문자열에서 객체로 변환)
+                if (conversation.getSummary() != null && objectMapper != null) {
+                    summary = objectMapper.readValue(conversation.getSummary(), com.chimaenono.dearmind.diary.Summary.class);
+                }
+            } catch (Exception e) {
+                log.warn("DiaryPlan 또는 Summary 생성 실패, 기본값 사용: {}", e.getMessage());
+                // 기본값으로 대체
+                diaryPlan = createDefaultDiaryPlan();
+                summary = createDefaultSummary();
+            }
             
             // 음악 추천 조회 또는 생성
             List<MusicRecommendation> musicRecommendations = musicRecommendationService
-                .getOrGenerateMusicRecommendations(
-                    conversationId,
-                    conversation.getDiary(),
-                    conversation.getDominantEmotion(),
-                    conversation.getEmotionConfidence()
-                );
+                .getOrGenerateMusicRecommendations(conversationId, diaryPlan, summary);
             
             DiaryResponse response = DiaryResponse.success(
                 conversationId,
-                conversation.getSummary(),
                 conversation.getDiary(),
-                emotionSummary,
                 musicRecommendations,
                 "일기를 성공적으로 조회했습니다."
             );
@@ -337,96 +350,46 @@ public class ConversationController {
         return ResponseEntity.ok("Conversation service is running");
     }
     
+    
+    
     /**
-     * 감정 분석 결과를 요약합니다.
+     * 기본 DiaryPlan을 생성합니다.
      */
-    private DiaryResponse.EmotionSummary createEmotionSummary(List<UserEmotionAnalysis> emotions) {
-        if (emotions.isEmpty()) {
-            DiaryResponse.EmotionSummary summary = new DiaryResponse.EmotionSummary();
-            summary.setDominantEmotion("중립");
-            summary.setEmotionCounts(Map.of());
-            summary.setAverageConfidence(0.0);
-            summary.setAnalyzedMessageCount(0);
-            return summary;
-        }
-        
-        Map<String, Integer> emotionCounts = new HashMap<>();
-        double totalConfidence = 0.0;
-        int analyzedCount = 0;
-        
-        for (UserEmotionAnalysis emotion : emotions) {
-            if (emotion.getCombinedEmotion() != null && !emotion.getCombinedEmotion().isEmpty()) {
-                String emotionType = emotion.getCombinedEmotion();
-                emotionCounts.put(emotionType, emotionCounts.getOrDefault(emotionType, 0) + 1);
-                
-                if (emotion.getCombinedConfidence() != null) {
-                    totalConfidence += emotion.getCombinedConfidence();
-                    analyzedCount++;
-                }
-            }
-        }
-        
-        // 주요 감정 찾기
-        String dominantEmotion = "중립";
-        int maxCount = 0;
-        for (Map.Entry<String, Integer> entry : emotionCounts.entrySet()) {
-            if (entry.getValue() > maxCount) {
-                maxCount = entry.getValue();
-                dominantEmotion = entry.getKey();
-            }
-        }
-        
-        // 평균 신뢰도 계산
-        double averageConfidence = analyzedCount > 0 ? totalConfidence / analyzedCount : 0.0;
-        
-        DiaryResponse.EmotionSummary summary = new DiaryResponse.EmotionSummary();
-        summary.setDominantEmotion(dominantEmotion);
-        summary.setEmotionCounts(emotionCounts);
-        summary.setAverageConfidence(averageConfidence);
-        summary.setAnalyzedMessageCount(emotions.size());
-        
-        return summary;
+    private com.chimaenono.dearmind.diary.DiaryPlan createDefaultDiaryPlan() {
+        com.chimaenono.dearmind.diary.DiaryPlan defaultPlan = new com.chimaenono.dearmind.diary.DiaryPlan();
+        defaultPlan.setFlowPattern("안정형");
+        defaultPlan.setOpening(Map.of("dominant", "중립"));
+        defaultPlan.setClosing(Map.of("dominant", "중립"));
+        defaultPlan.setStyleHints(Map.of(
+            "toneStart", "차분한",
+            "toneMid", "편안한", 
+            "toneEnd", "따뜻한"
+        ));
+        return defaultPlan;
     }
     
     /**
-     * Conversation에 저장된 감정 분석 결과를 EmotionSummary로 변환합니다.
+     * 기본 Summary를 생성합니다.
      */
-    private DiaryResponse.EmotionSummary createEmotionSummaryFromConversation(Conversation conversation) {
-        DiaryResponse.EmotionSummary summary = new DiaryResponse.EmotionSummary();
+    private com.chimaenono.dearmind.diary.Summary createDefaultSummary() {
+        com.chimaenono.dearmind.diary.Summary defaultSummary = new com.chimaenono.dearmind.diary.Summary();
+        defaultSummary.setSituation("대화 내용 요약");
+        defaultSummary.setEvents(List.of());
         
-        if (conversation.getDominantEmotion() != null) {
-            summary.setDominantEmotion(conversation.getDominantEmotion());
-        } else {
-            summary.setDominantEmotion("중립");
-        }
+        com.chimaenono.dearmind.diary.Summary.Anchors anchors = new com.chimaenono.dearmind.diary.Summary.Anchors();
+        anchors.setEra("1980년대");
+        anchors.setPeople(List.of());
+        anchors.setPlace(List.of());
+        anchors.setObjects(List.of());
+        defaultSummary.setAnchors(anchors);
         
-        if (conversation.getEmotionConfidence() != null) {
-            summary.setAverageConfidence(conversation.getEmotionConfidence());
-        } else {
-            summary.setAverageConfidence(0.0);
-        }
+        com.chimaenono.dearmind.diary.Summary.Highlights highlights = new com.chimaenono.dearmind.diary.Summary.Highlights();
+        highlights.setBestMoment("");
+        highlights.setHardMoment("");
+        highlights.setInsight("");
+        defaultSummary.setHighlights(highlights);
         
-        if (conversation.getEmotionDistribution() != null && !conversation.getEmotionDistribution().isEmpty()) {
-            // JSON 문자열을 Map으로 파싱
-            try {
-                ObjectMapper objectMapper = new ObjectMapper();
-                Map<String, Integer> emotionCounts = objectMapper.readValue(
-                    conversation.getEmotionDistribution(), 
-                    new TypeReference<Map<String, Integer>>() {}
-                );
-                summary.setEmotionCounts(emotionCounts);
-            } catch (Exception e) {
-                System.err.println("감정 분포 JSON 파싱 오류: " + e.getMessage());
-                summary.setEmotionCounts(Map.of());
-            }
-        } else {
-            summary.setEmotionCounts(Map.of());
-        }
-        
-        // 분석된 메시지 수는 감정 분포의 총합으로 계산
-        int totalMessages = summary.getEmotionCounts().values().stream().mapToInt(Integer::intValue).sum();
-        summary.setAnalyzedMessageCount(totalMessages);
-        
-        return summary;
+        defaultSummary.setQuotes(List.of());
+        return defaultSummary;
     }
 } 

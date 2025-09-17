@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>감정 흐름 분석 테스트</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #555;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .input-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .input-box {
+            margin-bottom: 15px;
+        }
+        .input-box label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        input[type="number"] {
+            width: 200px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button.secondary {
+            background-color: #6c757d;
+        }
+        button.secondary:hover {
+            background-color: #545b62;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #fff;
+            border-left: 4px solid #007bff;
+        }
+        .step h4 {
+            margin: 0 0 10px 0;
+            color: #007bff;
+        }
+        .json-display {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .status-good {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-bad {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 감정 흐름 분석 테스트</h1>
+        <p>Conversation 테이블의 flowPattern과 emotionFlow가 제대로 계산되고 저장되는지 확인합니다.</p>
+        
+        <div class="input-section">
+            <h2>📝 테스트 설정</h2>
+            <div class="input-box">
+                <label for="conversationId">Conversation ID:</label>
+                <input type="number" id="conversationId" placeholder="예: 1" value="1">
+            </div>
+            <div style="text-align: center;">
+                <button onclick="computeEmotionFlow()">🚀 감정 흐름 계산</button>
+                <button onclick="getEmotionFlowResult()" class="secondary">📊 결과 조회</button>
+                <button onclick="clearResults()" class="secondary">🗑️ 결과 지우기</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📈 테스트 결과</h2>
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api/emotion-flow/test';
+
+        async function computeEmotionFlow() {
+            const conversationId = document.getElementById('conversationId').value;
+            const resultDiv = document.getElementById('result');
+
+            if (!conversationId) {
+                showError('Conversation ID를 입력해주세요.');
+                return;
+            }
+
+            try {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result info';
+                resultDiv.textContent = '🔄 감정 흐름 계산 중...';
+
+                showStep('1단계: 감정 흐름 계산 API 호출');
+                
+                const response = await fetch(`${API_BASE_URL}/compute/${conversationId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API 호출 실패: ${response.status} - ${errorData.error || errorData.message}`);
+                }
+
+                const result = await response.json();
+                showStep(`✅ 감정 흐름 계산 완료: ${result.message}`);
+
+                // 자동으로 결과 조회
+                showStep('2단계: 계산된 결과 조회');
+                await getEmotionFlowResult();
+
+                resultDiv.className = 'result success';
+                resultDiv.textContent += '\n🎉 감정 흐름 계산 및 조회가 성공적으로 완료되었습니다!';
+
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 오류 발생: ${error.message}`;
+            }
+        }
+
+        async function getEmotionFlowResult() {
+            const conversationId = document.getElementById('conversationId').value;
+            const resultDiv = document.getElementById('result');
+
+            if (!conversationId) {
+                showError('Conversation ID를 입력해주세요.');
+                return;
+            }
+
+            try {
+                if (resultDiv.style.display === 'none') {
+                    resultDiv.style.display = 'block';
+                    resultDiv.className = 'result info';
+                    resultDiv.textContent = '🔍 감정 흐름 결과 조회 중...';
+                }
+
+                const response = await fetch(`${API_BASE_URL}/result/${conversationId}`);
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`조회 실패: ${response.status} - ${errorData.error}`);
+                }
+
+                const data = await response.json();
+
+                showStep('📊 감정 흐름 분석 결과:');
+                resultDiv.textContent += `\nConversation ID: ${data.conversationId}`;
+                resultDiv.textContent += `\nFlow Pattern: ${data.flowPattern}`;
+                resultDiv.textContent += `\nFlow Pattern Status: ${data.flowPatternStatus}`;
+                resultDiv.textContent += `\nEmotion Flow Status: ${data.emotionFlowStatus}`;
+
+                // flowPattern 상세 정보
+                if (data.flowPattern && data.flowPattern !== 'null') {
+                    showStep(`✅ Flow Pattern이 성공적으로 저장되었습니다: ${data.flowPattern}`);
+                } else {
+                    showStep('❌ Flow Pattern이 저장되지 않았습니다!');
+                }
+
+                // emotionFlow JSON 파싱 및 표시
+                if (data.emotionFlow && data.emotionFlow !== 'null') {
+                    showStep('✅ Emotion Flow가 성공적으로 저장되었습니다!');
+                    try {
+                        const emotionFlowObj = JSON.parse(data.emotionFlow);
+                        
+                        resultDiv.textContent += '\n\n📈 Emotion Flow 상세:';
+                        resultDiv.textContent += `\n- 패턴: ${emotionFlowObj.metrics?.pattern || 'N/A'}`;
+                        resultDiv.textContent += `\n- 전환 횟수: ${emotionFlowObj.metrics?.flips || 'N/A'}`;
+                        resultDiv.textContent += `\n- 긍정 비율: ${(emotionFlowObj.metrics?.positive_ratio * 100).toFixed(1) || 'N/A'}%`;
+                        resultDiv.textContent += `\n- 세그먼트 수: ${emotionFlowObj.segments?.length || 'N/A'}`;
+                        resultDiv.textContent += `\n- 생성 시간: ${emotionFlowObj.generatedAt || 'N/A'}`;
+                        
+                        if (emotionFlowObj.segments && emotionFlowObj.segments.length > 0) {
+                            resultDiv.textContent += '\n\n📋 세그먼트 정보:';
+                            emotionFlowObj.segments.forEach((segment, index) => {
+                                resultDiv.textContent += `\n  세그먼트 ${index + 1}: ${segment.dominant} (턴 ${segment.start_turn}-${segment.end_turn})`;
+                            });
+                        }
+
+                        // JSON 전체 표시
+                        const jsonDiv = document.createElement('div');
+                        jsonDiv.className = 'json-display';
+                        jsonDiv.innerHTML = '<h4>📄 Emotion Flow JSON 전체:</h4><pre>' + 
+                            JSON.stringify(emotionFlowObj, null, 2) + '</pre>';
+                        resultDiv.appendChild(jsonDiv);
+
+                    } catch (e) {
+                        resultDiv.textContent += `\n⚠️ Emotion Flow JSON 파싱 오류: ${e.message}`;
+                    }
+                } else {
+                    showStep('❌ Emotion Flow가 저장되지 않았습니다!');
+                }
+
+                if (resultDiv.className !== 'result success') {
+                    resultDiv.className = 'result info';
+                }
+
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 조회 중 오류: ${error.message}`;
+            }
+        }
+
+        function showStep(message) {
+            const resultDiv = document.getElementById('result');
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'step';
+            stepDiv.innerHTML = `<h4>${message}</h4>`;
+            resultDiv.appendChild(stepDiv);
+        }
+
+        function showError(message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result error';
+            resultDiv.textContent = `❌ ${message}`;
+        }
+
+        function clearResults() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'none';
+            resultDiv.textContent = '';
+            resultDiv.innerHTML = '';
+        }
+
+        // 페이지 로드 시 서비스 상태 확인
+        window.onload = async function() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (response.ok) {
+                    console.log('✅ EmotionFlow Test 서비스가 정상 작동 중입니다.');
+                } else {
+                    console.warn('⚠️ EmotionFlow Test 서비스 상태 확인 실패');
+                }
+            } catch (error) {
+                console.error('❌ EmotionFlow Test 서비스 연결 실패:', error);
+            }
+        };
+    </script>
+</body>
+</html>

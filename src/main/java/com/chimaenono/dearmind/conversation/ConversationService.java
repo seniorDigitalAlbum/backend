@@ -306,9 +306,9 @@ public class ConversationService {
         if (emotionAnalyses.isEmpty()) {
             // 감정 분석 데이터가 없는 경우
             ConversationSummaryResponse.EmotionSummary summary = new ConversationSummaryResponse.EmotionSummary();
-            summary.setDominantEmotion("분석 없음");
+            // summary.setDominantEmotion("분석 없음"); // 기존 방식 - 주석처리
             summary.setEmotionCounts(new HashMap<>());
-            summary.setAverageConfidence(0.0);
+            // summary.setAverageConfidence(0.0); // 기존 방식 - 주석처리
             summary.setAnalyzedMessageCount(0);
             return summary;
         }
@@ -330,24 +330,28 @@ public class ConversationService {
             }
         }
         
-        // 주요 감정 찾기
-        String dominantEmotion = "중립";
-        int maxCount = 0;
-        for (Map.Entry<String, Integer> entry : emotionCounts.entrySet()) {
-            if (entry.getValue() > maxCount) {
-                maxCount = entry.getValue();
-                dominantEmotion = entry.getKey();
-            }
-        }
+        // TODO: 기존 감정 필드 사용 부분 - 새로운 감정 흐름 분석으로 대체 예정
+        // 기존 dominantEmotion 계산 방식은 더 이상 사용하지 않음
+        // 새로운 방식: EmotionFlowService.computeAndSaveFlow()에서 flowPattern과 emotionFlow 계산
         
-        // 평균 신뢰도 계산
-        double averageConfidence = analyzedCount > 0 ? totalConfidence / analyzedCount : 0.0;
+        // 주요 감정 찾기 (기존 방식 - 주석처리)
+        // String dominantEmotion = "중립";
+        // int maxCount = 0;
+        // for (Map.Entry<String, Integer> entry : emotionCounts.entrySet()) {
+        //     if (entry.getValue() > maxCount) {
+        //         maxCount = entry.getValue();
+        //         dominantEmotion = entry.getKey();
+        //     }
+        // }
+        
+        // 평균 신뢰도 계산 (기존 방식 - 주석처리)
+        // double averageConfidence = analyzedCount > 0 ? totalConfidence / analyzedCount : 0.0;
         
         // 응답 객체 생성
         ConversationSummaryResponse.EmotionSummary summary = new ConversationSummaryResponse.EmotionSummary();
-        summary.setDominantEmotion(dominantEmotion);
+        // summary.setDominantEmotion(dominantEmotion); // 기존 방식 - 주석처리
         summary.setEmotionCounts(emotionCounts);
-        summary.setAverageConfidence(averageConfidence);
+        // summary.setAverageConfidence(averageConfidence); // 기존 방식 - 주석처리
         summary.setAnalyzedMessageCount(emotionAnalyses.size());
         
         return summary;
@@ -405,15 +409,13 @@ public class ConversationService {
         return null;
     }
     
-    @Operation(summary = "대화 감정 분석 결과 저장", description = "대화의 통합된 감정 분석 결과를 저장합니다")
-    public void saveConversationEmotionAnalysis(Long conversationId, String dominantEmotion, 
-                                               Double emotionConfidence, String emotionDistribution) {
+    @Operation(summary = "대화 감정 흐름 분석 결과 저장", description = "대화의 감정 흐름 분석 결과를 저장합니다")
+    public void saveConversationFlowAnalysis(Long conversationId, String flowPattern, String emotionFlow) {
         Optional<Conversation> conversationOpt = conversationRepository.findById(conversationId);
         if (conversationOpt.isPresent()) {
             Conversation conversation = conversationOpt.get();
-            conversation.setDominantEmotion(dominantEmotion);
-            conversation.setEmotionConfidence(emotionConfidence);
-            conversation.setEmotionDistribution(emotionDistribution);
+            conversation.setFlowPattern(flowPattern);
+            conversation.setEmotionFlow(emotionFlow);
             conversationRepository.save(conversation);
         }
     }

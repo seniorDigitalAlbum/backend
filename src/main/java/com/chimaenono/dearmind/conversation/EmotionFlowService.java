@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysis;
 import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysisRepository;
+import com.chimaenono.dearmind.diary.EmotionFlow;
 
 @Service
 public class EmotionFlowService {
@@ -84,10 +85,10 @@ public class EmotionFlowService {
         List<Map<String, Double>> pSm = ema(pSeq, BETA);
 
         // 4) 세그먼트 탐지
-        List<Segment> segments = segmentize(pSm, confSeq);
+        List<EmotionFlow.Segment> segments = segmentize(pSm, confSeq);
 
         // 5) 메트릭/패턴
-        Metrics metrics = buildMetrics(pSm);
+        EmotionFlow.Metrics metrics = buildMetrics(pSm);
 
         // 6) params + inputHash 기록
         Map<String, Object> params = Map.of(
@@ -98,8 +99,8 @@ public class EmotionFlowService {
 
         // 7) JSON payload
         Map<String, Object> flowJson = Map.of(
-                "segments", segments.stream().map(Segment::toMap).collect(Collectors.toList()),
-                "metrics", metrics.toMap(),
+                "segments", segments.stream().map(this::segmentToMap).collect(Collectors.toList()),
+                "metrics", metricsToMap(metrics),
                 "params", params,
                 "inputHash", inputHash,
                 "generatedAt", Instant.now().toString()
@@ -109,7 +110,7 @@ public class EmotionFlowService {
         Conversation conv = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new IllegalArgumentException("conversation not found: " + conversationId));
         conv.setEmotionFlow(serialize(flowJson));
-        conv.setFlowPattern(metrics.pattern);
+        conv.setFlowPattern(metrics.getPattern());
         conversationRepository.save(conv);
     }
 
@@ -181,8 +182,8 @@ public class EmotionFlowService {
         return out;
     }
 
-    private List<Segment> segmentize(List<Map<String, Double>> pSm, List<Double> confSeq) {
-        List<Segment> segs = new ArrayList<>();
+    private List<EmotionFlow.Segment> segmentize(List<Map<String, Double>> pSm, List<Double> confSeq) {
+        List<EmotionFlow.Segment> segs = new ArrayList<>();
         if (pSm.isEmpty()) return segs;
 
         int segStart = 0, cool = 0;
@@ -211,7 +212,7 @@ public class EmotionFlowService {
         return segs;
     }
 
-    private Segment buildSegment(int s, int e, List<Map<String, Double>> pSm, List<Double> confSeq) {
+    private EmotionFlow.Segment buildSegment(int s, int e, List<Map<String, Double>> pSm, List<Double> confSeq) {
         Map<String, Double> acc = new LinkedHashMap<>();
         L6.forEach(l -> acc.put(l, 0.0));
         double confSum = 0;
@@ -226,10 +227,10 @@ public class EmotionFlowService {
         }
         String dom = argmax(acc);
         int len = e - s + 1;
-        return new Segment(s, e, dom, confSum / len, vSum / len, aSum / len);
+        return new EmotionFlow.Segment(s, e, dom, confSum / len, vSum / len, aSum / len);
     }
 
-    private Metrics buildMetrics(List<Map<String, Double>> pSm) {
+    private EmotionFlow.Metrics buildMetrics(List<Map<String, Double>> pSm) {
         List<String> y = new ArrayList<>();
         List<Double> v = new ArrayList<>();
         for (Map<String, Double> p : pSm) {
@@ -268,7 +269,7 @@ public class EmotionFlowService {
                 (dv <= -0.2) ? "하강형" :
                 (flips >= 3) ? "급반전형" : "안정형";
 
-        return new Metrics(flips, positiveRatio, best, peak, pattern);
+        return new EmotionFlow.Metrics(flips, positiveRatio, best, peak, pattern);
     }
 
     private static String argmax(Map<String, Double> p) {
@@ -335,53 +336,29 @@ public class EmotionFlowService {
         return new String(out);
     }
 
-    // ====== 내부 DTO ======
-    static class Segment {
-        int startTurn, endTurn;
-        String dominant;
-        double meanConf, valenceMean, arousalMean;
-
-        Segment(int s, int e, String d, double mc, double vm, double am) {
-            this.startTurn = s; this.endTurn = e;
-            this.dominant = d; this.meanConf = mc;
-            this.valenceMean = vm; this.arousalMean = am;
-        }
-        Map<String, Object> toMap() {
-            return Map.of(
-                    "start_turn", startTurn,
-                    "end_turn", endTurn,
-                    "dominant", dominant,
-                    "mean_conf", round(meanConf),
-                    "valence_mean", round(valenceMean),
-                    "arousal_mean", round(arousalMean)
-            );
-        }
-    }
-
-    static class Metrics {
-        int flips;
-        double positiveRatio;
-        int longestNegativeRun;
-        int peakArousalTurn;
-        String pattern;
-
-        Metrics(int f, double pr, int lnr, int peak, String ptn) {
-            this.flips = f; this.positiveRatio = pr;
-            this.longestNegativeRun = lnr; this.peakArousalTurn = peak;
-            this.pattern = ptn;
-        }
-        Map<String, Object> toMap() {
-            return Map.of(
-                    "flips", flips,
-                    "positive_ratio", round(positiveRatio),
-                    "longest_negative_run", longestNegativeRun,
-                    "peak_arousal_turn", peakArousalTurn,
-                    "pattern", pattern
-            );
-        }
-    }
 
     private static double round(double x) {
         return Math.round(x * 1000.0) / 1000.0; // 소수 3자리
+    }
+    
+    private Map<String, Object> segmentToMap(EmotionFlow.Segment segment) {
+        return Map.of(
+                "start_turn", segment.getStartTurn(),
+                "end_turn", segment.getEndTurn(),
+                "dominant", segment.getDominant(),
+                "mean_conf", round(segment.getMeanConf()),
+                "valence_mean", round(segment.getValenceMean()),
+                "arousal_mean", round(segment.getArousalMean())
+        );
+    }
+    
+    private Map<String, Object> metricsToMap(EmotionFlow.Metrics metrics) {
+        return Map.of(
+                "flips", metrics.getFlips(),
+                "positive_ratio", round(metrics.getPositiveRatio()),
+                "longest_negative_run", metrics.getLongestNegativeRun(),
+                "peak_arousal_turn", metrics.getPeakArousalTurn(),
+                "pattern", metrics.getPattern()
+        );
     }
 }

@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.URI;
 import java.net.http.HttpClient;
+import lombok.extern.slf4j.Slf4j;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
 
+@Slf4j
 @Service
 public class GPTService {
     
@@ -52,6 +54,9 @@ public class GPTService {
     
     @Autowired
     private EmotionFlowService emotionFlowService;
+    
+    @Autowired
+    private com.chimaenono.dearmind.diary.DiaryPlanService diaryPlanService;
     
     @Autowired
     private UserEmotionAnalysisRepository userEmotionAnalysisRepository;
@@ -223,25 +228,55 @@ public class GPTService {
         
         // 프롬프트 구성
         StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append("**[지시]**\n");
-        promptBuilder.append("다음은 사용자와 시스템의 대화 내용이야.\n");
-        promptBuilder.append("이 대화의 핵심적인 주제와 사용자의 감정 변화에 초점을 맞춰서 ").append(summaryLength).append("자 내외로 요약해줘.\n\n");
+        promptBuilder.append("당신은 회상요법을 돕는 '대화 요약가'입니다.\n");
+        promptBuilder.append("목표: 사용자와 AI의 대화 내용을 사실 그대로, 짧고 쉬운 한국어로 요약합니다.\n");
+        promptBuilder.append("금지: 새로운 사실 창작, 평가/훈계, 의학적 조언, 감정 해석·추측, 과장 표현.\n");
+        promptBuilder.append("출력은 지정한 JSON 스키마만 반환합니다(추가 텍스트 금지).\n\n");
         
-        promptBuilder.append("**[대화 내용]**\n");
+        promptBuilder.append("다음 대화 기록을 요약하세요.\n\n");
+        
+        promptBuilder.append("[요약 규칙]\n");
+        promptBuilder.append("- 길이: 250~350자(한국어), 문장 3~4개.\n");
+        promptBuilder.append("- 시간순 서술(처음→중간→끝).\n");
+        promptBuilder.append("- 사용자가 직접 말한 핵심 사건/생각 3~5개를 선택.\n");
+        promptBuilder.append("- 회상 단서(사람/장소/시대/물건)를 추출.\n");
+        promptBuilder.append("- 대표 인용문은 사용자 발화 중 1문장 이내 1개(없으면 빈 배열).\n");
+        promptBuilder.append("- 감정 흐름이나 해석은 쓰지 말 것(패턴, 분위기, 긍/부정 등 금지).\n\n");
+        
+        promptBuilder.append("[입력]\n");
+        promptBuilder.append("- 대화 기록(최신이 맨 아래):\n");
         promptBuilder.append(conversationBuilder.toString());
+        promptBuilder.append("\n");
+        
+        promptBuilder.append("[출력 스키마(JSON만)]\n");
+        promptBuilder.append("{\n");
+        promptBuilder.append("  \"situation\": \"대화 주제를 1~2문장으로 사실 위주 요약\",\n");
+        promptBuilder.append("  \"events\": [\"핵심 사건/생각 3~5개(사실만)\"],\n");
+        promptBuilder.append("  \"anchors\": {\n");
+        promptBuilder.append("    \"people\": [\"사람(치환어)\"],\n");
+        promptBuilder.append("    \"place\": [\"장소(치환어)\"],\n");
+        promptBuilder.append("    \"era\": \"연대/시기(가능하면)\",\n");
+        promptBuilder.append("    \"objects\": [\"물건/음식/노래 등(선택)\"]\n");
+        promptBuilder.append("  },\n");
+        promptBuilder.append("  \"highlights\": {\n");
+        promptBuilder.append("    \"best_moment\": \"좋았던 순간(사실 한 줄, 없으면 빈 문자열)\",\n");
+        promptBuilder.append("    \"hard_moment\": \"어려웠던 순간(사실 한 줄, 없으면 빈 문자열)\",\n");
+        promptBuilder.append("    \"insight\": \"사용자가 말한 깨달음/생각(없으면 빈 문자열)\"\n");
+        promptBuilder.append("  },\n");
+        promptBuilder.append("  \"quotes\": [\"사용자 원문 1문장(선택, 최대 1개)\"]\n");
+        promptBuilder.append("}");
         
         // GPT 요청 생성
         GPTRequest gptRequest = new GPTRequest();
         gptRequest.setModel(defaultModel);
-        gptRequest.setMax_tokens(200); // 요약이므로 토큰 수를 줄임
-        gptRequest.setTemperature(0.3); // 요약이므로 창의성보다는 정확성에 중점
+        gptRequest.setMax_tokens(800); // JSON 응답을 위해 토큰 수 증가
+        gptRequest.setTemperature(0.1); // 정확한 JSON 형식을 위해 낮은 온도
         gptRequest.setStream(false);
         
         // 메시지 구성
-        GPTMessage systemMessage = new GPTMessage("system", promptBuilder.toString());
-        GPTMessage userMessage = new GPTMessage("user", "대화 내용을 요약해줘.");
+        GPTMessage userMessage = new GPTMessage("user", promptBuilder.toString());
         
-        gptRequest.setMessages(List.of(systemMessage, userMessage));
+        gptRequest.setMessages(List.of(userMessage));
         
         // GPT API 호출
         GPTResponse gptResponse = generateResponse(gptRequest);
@@ -257,50 +292,8 @@ public class GPTService {
      * 대화 내용을 요약하고 데이터베이스에 저장합니다.
      */
     public String generateAndSaveConversationSummary(Long conversationId, Integer summaryLength) throws Exception {
-        // 대화 메시지 조회
-        List<ConversationMessage> messages = conversationService.getMessagesByConversationId(conversationId);
-        
-        if (messages.isEmpty()) {
-            throw new RuntimeException("대화 메시지를 찾을 수 없습니다: " + conversationId);
-        }
-        
-        // 대화 내용 구성
-        StringBuilder conversationBuilder = new StringBuilder();
-        for (ConversationMessage message : messages) {
-            String sender = message.getSenderType() == ConversationMessage.SenderType.USER ? "사용자" : "시스템";
-            conversationBuilder.append(sender).append(": ").append(message.getContent()).append("\n");
-        }
-        
-        // 프롬프트 구성
-        StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append("**[지시]**\n");
-        promptBuilder.append("다음은 사용자와 시스템의 대화 내용이야.\n");
-        promptBuilder.append("이 대화의 핵심적인 주제와 사용자의 감정 변화에 초점을 맞춰서 ").append(summaryLength).append("자 내외로 요약해줘.\n\n");
-        
-        promptBuilder.append("**[대화 내용]**\n");
-        promptBuilder.append(conversationBuilder.toString());
-        
-        // GPT 요청 생성
-        GPTRequest gptRequest = new GPTRequest();
-        gptRequest.setModel(defaultModel);
-        gptRequest.setMax_tokens(200);
-        gptRequest.setTemperature(0.3);
-        gptRequest.setStream(false);
-        
-        // 메시지 구성
-        GPTMessage systemMessage = new GPTMessage("system", promptBuilder.toString());
-        GPTMessage userMessage = new GPTMessage("user", "대화 내용을 요약해줘.");
-        
-        gptRequest.setMessages(List.of(systemMessage, userMessage));
-        
-        // GPT API 호출
-        GPTResponse gptResponse = generateResponse(gptRequest);
-        
-        if (gptResponse.getChoices() == null || gptResponse.getChoices().isEmpty()) {
-            throw new RuntimeException("GPT API 응답에 선택지가 없습니다.");
-        }
-        
-        String summary = gptResponse.getChoices().get(0).getMessage().getContent();
+        // 기본 요약 생성 함수 호출
+        String summary = generateConversationSummary(conversationId, summaryLength);
         
         // 데이터베이스에 요약 저장
         conversationService.saveConversationSummary(conversationId, summary);
@@ -312,45 +305,70 @@ public class GPTService {
      * 요약된 대화 내용과 감정 분석 결과를 바탕으로 일기를 생성하고 저장합니다.
      */
     public String generateAndSaveDiary(Long conversationId, String summary) throws Exception {
-        // 감정 분석 결과 조회
-        List<UserEmotionAnalysis> emotions = userEmotionAnalysisRepository.findByConversationMessageConversationIdOrderByAnalysisTimestampAsc(conversationId);
-        
-        // 감정 요약 생성 및 저장
-        String emotionSummary = createEmotionSummary(emotions);
+        // DiaryPlan 생성
+        com.chimaenono.dearmind.diary.DiaryPlan diaryPlan = diaryPlanService.buildDiaryPlan(conversationId);
+        log.info("DiaryPlan 생성 완료: conversationId={}, segments={}, pattern={}", 
+                conversationId, diaryPlan.getSegments().size(), diaryPlan.getFlowPattern());
         
         // 감정 흐름 분석 결과를 Conversation 테이블에 저장
         emotionFlowService.computeAndSaveFlow(conversationId);
         
         // 프롬프트 구성
         StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append("**[역할 설정]**\n");
-        promptBuilder.append("너는 사용자의 대화 내용을 바탕으로 따뜻하고 공감적인 일기를 작성하는 AI야.\n\n");
+        promptBuilder.append("당신은 회상요법을 돕는 공감형 '일기 작가'입니다.\n");
+        promptBuilder.append("목표: 제공된 요약(JSON)과 DiaryPlan만을 근거로, 한국어 1인칭 과거형 일기를 작성합니다.\n");
+        promptBuilder.append("규칙:\n");
+        promptBuilder.append("- 사실 준수: 요약에 없는 새로운 사실을 만들지 마세요.\n");
+        promptBuilder.append("- 문체: 쉬운 단어, 짧은 문장(한 문장 10~15단어), 과장·훈계 금지.\n");
+        promptBuilder.append("- 구조: 3단락(각 3~4문장). 시작-전환-마무리의 정서 흐름을 DiaryPlan에 맞게 구성.\n");
+        promptBuilder.append("- 정서: DiaryPlan.styleHints(toneStart/mid/end)에 맞는 어조 사용.\n\n");
         
-        promptBuilder.append("**[대화 요약]**\n");
-        promptBuilder.append(summary).append("\n\n");
+        promptBuilder.append("출력 형식:\n");
+        promptBuilder.append("- 제목 1줄 + 본문. JSON 금지, 추가 설명 금지.\n\n");
         
-        promptBuilder.append("**[감정 분석 결과]**\n");
-        promptBuilder.append(emotionSummary).append("\n\n");
+        promptBuilder.append("다음 입력으로 일기를 작성하세요.\n\n");
         
-        promptBuilder.append("**[지시]**\n");
-        promptBuilder.append("위의 대화 요약과 감정 분석 결과를 바탕으로 사용자의 마음을 담은 일기를 작성해줘.\n");
-        promptBuilder.append("- 사용자의 감정과 경험을 공감적으로 표현해줘\n");
-        promptBuilder.append("- 따뜻하고 위로가 되는 톤으로 작성해줘\n");
-        promptBuilder.append("- 200-300자 내외로 작성해줘\n");
-        promptBuilder.append("- 일기 형식으로 작성해줘 (예: 오늘은...)\n");
+        promptBuilder.append("[요약(JSON)]\n");
+        promptBuilder.append(summary).append("\n");
+        promptBuilder.append("// 스키마 예시:\n");
+        promptBuilder.append("// {\"meta\":{\"date\":\"2025-09-16\",\"locale\":\"ko-KR\"},\n");
+        promptBuilder.append("//  \"situation\":\"...\",\n");
+        promptBuilder.append("//  \"events\":[\"...\",\"...\",\"...\"],\n");
+        promptBuilder.append("//  \"anchors\":{\"people\":[\"가족\"],\"place\":[\"동네 골목\"],\"era\":\"초등학교 시절\",\"objects\":[\"라디오\"]},\n");
+        promptBuilder.append("//  \"highlights\":{\"best_moment\":\"...\",\"hard_moment\":\"...\",\"insight\":\"...\"},\n");
+        promptBuilder.append("//  \"quotes\":[\"사용자 원문 1문장\"]}\n\n");
+        
+        promptBuilder.append("[DiaryPlan(JSON)]\n");
+        // TODO: DiaryPlan JSON을 여기에 추가 (현재는 임시로 빈 값)
+        promptBuilder.append("{\"flowPattern\":\"안정형\",\"opening\":{\"dominant\":\"중립\"},\"closing\":{\"dominant\":\"중립\"},\"styleHints\":{\"toneStart\":\"차분한\",\"toneMid\":\"편안한\",\"toneEnd\":\"따뜻한\"}}\n");
+        promptBuilder.append("// 예시 키: \n");
+        promptBuilder.append("// {\"flowPattern\":\"U-shape\",\n");
+        promptBuilder.append("//  \"opening\":{\"dominant\":\"슬픔\",\"valenceMean\":-0.8},\n");
+        promptBuilder.append("//  \"turningPoint\":{\"turn\":6,\"dominant\":\"불안\"},\n");
+        promptBuilder.append("//  \"closing\":{\"dominant\":\"기쁨\",\"valenceMean\":+0.7},\n");
+        promptBuilder.append("//  \"styleHints\":{\"toneStart\":\"차분·다독임\",\"toneMid\":\"긴장 완화\",\"toneEnd\":\"안도·감사\"}}\n\n");
+        
+        promptBuilder.append("[작성 지침]\n");
+        promptBuilder.append("1) 1단락(시작): summary.situation과 DiaryPlan.opening에 맞춰 사실을 짧게 회고하고 toneStart로 말하세요.\n");
+        promptBuilder.append("2) 2단락(전환): turningPoint 근처 사건/생각을 events·anchors에서 골라 연결하세요. toneMid로 부드럽게 전환을 표현하세요.\n");
+        promptBuilder.append("3) 3단락(마무리): closing에 맞춰 오늘의 깨달음/감사(= summary.highlights.insight/best_moment 활용)를 한두 문장으로 정리하고 toneEnd로 마치세요.\n\n");
+        
+        promptBuilder.append("추가 규칙:\n");
+        promptBuilder.append("- quotes가 있으면 한 문장만 자연스럽게 녹여 쓰되 따옴표는 생략해도 됩니다.\n");
+        promptBuilder.append("- 시대/장소/사람/물건(anchors)은 1~3개만 가볍게 언급.\n");
+        promptBuilder.append("- 감정 용어를 나열하지 말고, 어조로만 드러내세요.\n");
         
         // GPT 요청 생성
         GPTRequest gptRequest = new GPTRequest();
         gptRequest.setModel(defaultModel);
-        gptRequest.setMax_tokens(400);
-        gptRequest.setTemperature(0.7);
+        gptRequest.setMax_tokens(600); // 3단락 구조의 일기를 위해 토큰 수 증가
+        gptRequest.setTemperature(0.4); // 사실 기반 작성을 위해 창의성 낮춤
         gptRequest.setStream(false);
         
         // 메시지 구성
-        GPTMessage systemMessage = new GPTMessage("system", promptBuilder.toString());
-        GPTMessage userMessage = new GPTMessage("user", "일기를 작성해줘.");
+        GPTMessage userMessage = new GPTMessage("user", promptBuilder.toString());
         
-        gptRequest.setMessages(List.of(systemMessage, userMessage));
+        gptRequest.setMessages(List.of(userMessage));
         
         // GPT API 호출
         GPTResponse gptResponse = generateResponse(gptRequest);
@@ -367,76 +385,55 @@ public class GPTService {
         return diary;
     }
     
-    /**
-     * 감정 분석 결과를 요약합니다.
-     */
-    private String createEmotionSummary(List<UserEmotionAnalysis> emotions) {
-        if (emotions.isEmpty()) {
-            return "감정 분석 결과가 없습니다.";
-        }
-        
-        Map<String, Integer> emotionCounts = new HashMap<>();
-        double totalConfidence = 0.0;
-        int analyzedCount = 0;
-        
-        for (UserEmotionAnalysis emotion : emotions) {
-            if (emotion.getCombinedEmotion() != null && !emotion.getCombinedEmotion().isEmpty()) {
-                String emotionType = emotion.getCombinedEmotion();
-                emotionCounts.put(emotionType, emotionCounts.getOrDefault(emotionType, 0) + 1);
-                
-                if (emotion.getCombinedConfidence() != null) {
-                    totalConfidence += emotion.getCombinedConfidence();
-                    analyzedCount++;
-                }
-            }
-        }
-        
-        // 주요 감정 찾기
-        String dominantEmotion = "중립";
-        int maxCount = 0;
-        for (Map.Entry<String, Integer> entry : emotionCounts.entrySet()) {
-            if (entry.getValue() > maxCount) {
-                maxCount = entry.getValue();
-                dominantEmotion = entry.getKey();
-            }
-        }
-        
-        // 평균 신뢰도 계산
-        double averageConfidence = analyzedCount > 0 ? totalConfidence / analyzedCount : 0.0;
-        
-        return String.format("주요 감정: %s, 평균 신뢰도: %.2f, 감정 분포: %s", 
-            dominantEmotion, averageConfidence, emotionCounts.toString());
-    }
-    
     
     /**
-     * 일기 내용과 감정을 바탕으로 음악을 추천합니다.
+     * DiaryPlan과 Summary를 바탕으로 시니어 친화적인 음악을 추천합니다.
      */
     public List<MusicRecommendation> generateMusicRecommendations(
-            String diary, String emotion, Double confidence) throws Exception {
+            com.chimaenono.dearmind.diary.DiaryPlan diaryPlan, 
+            com.chimaenono.dearmind.diary.Summary summary) throws Exception {
         
         // 프롬프트 구성
         StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append("**[역할 설정]**\n");
-        promptBuilder.append("너는 사용자의 일기 내용과 감정을 분석하여, 그에 가장 잘 어울리는 음악을 추천해주는 전문적인 음악 큐레이터야.\n\n");
+        promptBuilder.append("당신은 60–70대 사용자를 위한 '음악 큐레이터'입니다.\n");
+        promptBuilder.append("목표: 주어진 DiaryPlan(정서 아크)과 Summary(내용/시대 단서)만을 근거로, 일기를 읽는 동안 듣기 좋은 음악 1개를 추천합니다.\n\n");
         
-        promptBuilder.append("**[입력 데이터]**\n");
-        promptBuilder.append("사용자의 일기 내용:\n");
-        promptBuilder.append("\"").append(diary).append("\"\n\n");
-        promptBuilder.append("사용자의 감정: '").append(emotion).append("', 신뢰도: ").append(String.format("%.0f", confidence * 100)).append("%\n\n");
+        promptBuilder.append("규칙:\n");
+        promptBuilder.append("- 감정 매칭: DiaryPlan.flowPattern과 styleHints(toneStart/mid/end), closing.dominant·valenceMean을 우선 반영.\n");
+        promptBuilder.append("- 시대 매칭: \n");
+        promptBuilder.append("  1970~1990년대 국내 가요/포크/발라드/시티팝 또는 동시대 올드팝을 기본 가정.\n");
+        promptBuilder.append("- 청감 안전(시니어 친화): 과도한 고음/소음/급격한 드롭·크레센도·BPM>120 회피. 중간 이하 볼륨, 단순 리듬, 부드러운 음색(피아노·기타·현·재즈 트리오) 우선.\n");
+        promptBuilder.append("- 가사 방해 최소화: 하강/슬픔/상처·불안 톤 구간은 연주곡 우선 권장.\n");
+        promptBuilder.append("- 환각 금지: 존재하지 않는 곡/아티스트명을 만들지 마세요.\n");
+        promptBuilder.append("- 출력은 지정 JSON 스키마만. 링크/설명문 금지.\n\n");
         
-        promptBuilder.append("**[추천 조건]**\n");
-        promptBuilder.append("1. 감정: '").append(emotion).append("'에 공감하면서도 너무 우울하지 않은, 잔잔하고 따뜻한 위로를 주는 음악을 추천해줘.\n");
-        promptBuilder.append("2. 장르: 인디, 발라드 장르의 곡을 선호해.\n");
-        promptBuilder.append("3. 추천 개수: 3곡\n");
-        promptBuilder.append("4. 반드시 실제로 존재하는 한국 가요만 추천해줘.\n");
-        promptBuilder.append("5. 매우 유명하고 대중적으로 알려진 가수와 그들의 대표곡만 추천해줘.\n");
-        promptBuilder.append("6. 가수와 노래 제목의 조합이 정확해야 합니다.\n");
-        promptBuilder.append("7. 추천 예시: 아이유-좋은날, 이승기-삭제, 태연-만약에, 박효신-야생화\n");
-        promptBuilder.append("8. 제목과 가수명을 정확하게 입력해줘.\n\n");
+        promptBuilder.append("감정→음악 매핑 가이드:\n");
+        promptBuilder.append("- closing.dominant가 기쁨: 메이저 감성, 90–110 BPM, 밝은 가요/올드팝.\n");
+        promptBuilder.append("- 슬픔/상처: 60–80 BPM, 피아노/스트링 중심 연주곡, 잔잔한 발라드.\n");
+        promptBuilder.append("- 불안/당황: 앰비언트/뉴에이지/재즈 트리오, 반복적이고 안정적인 패턴.\n");
+        promptBuilder.append("- 분노: 중저음 안정의 어쿠스틱/재즈 발라드(자극 최소).\n");
+        promptBuilder.append("flowPattern이 U-shape면 도입(저각성)→중간(소폭 상승)→끝(안도)로 배치합니다.\n\n");
         
-        promptBuilder.append("**[출력 형식]**\n");
-        promptBuilder.append("아래 JSON 형식으로 출력해줘. YouTube 링크는 제공하지 마세요.\n");
+        promptBuilder.append("[입력]\n");
+        promptBuilder.append("- DiaryPlan(JSON):\n");
+        try {
+            String diaryPlanJson = objectMapper.writeValueAsString(diaryPlan);
+            promptBuilder.append(diaryPlanJson).append("\n\n");
+        } catch (Exception e) {
+            // 파싱 실패 시 기본값 사용
+            promptBuilder.append("{\"flowPattern\":\"안정형\",\"closing\":{\"dominant\":\"중립\"},\"styleHints\":{\"toneStart\":\"차분한\",\"toneMid\":\"편안한\",\"toneEnd\":\"따뜻한\"}}\n\n");
+        }
+        
+        promptBuilder.append("- Summary(JSON):\n");
+        try {
+            String summaryJson = objectMapper.writeValueAsString(summary);
+            promptBuilder.append(summaryJson).append("\n\n");
+        } catch (Exception e) {
+            // 파싱 실패 시 기본값 사용
+            promptBuilder.append("{\"situation\":\"대화 내용 요약\",\"events\":[],\"anchors\":{\"era\":\"1980년대\"},\"highlights\":{},\"quotes\":[]}\n\n");
+        }
+        
+        promptBuilder.append("[출력 스키마(JSON만)]\n");
         promptBuilder.append("{\n");
         promptBuilder.append("  \"recommended_music\": [\n");
         promptBuilder.append("    {\n");
@@ -445,19 +442,18 @@ public class GPTService {
         promptBuilder.append("      \"mood\": \"음악 분위기\"\n");
         promptBuilder.append("    }\n");
         promptBuilder.append("  ]\n");
-        promptBuilder.append("}\n");
+        promptBuilder.append("}");
         
         // GPT API 호출
         GPTRequest gptRequest = new GPTRequest();
         gptRequest.setModel(defaultModel);
-        gptRequest.setMax_tokens(800);
-        gptRequest.setTemperature(0.7);
+        gptRequest.setMax_tokens(600); // JSON 응답에 최적화
+        gptRequest.setTemperature(0.3); // 정확한 아티스트/곡명을 위해 낮춤
         gptRequest.setStream(false);
         
-        GPTMessage systemMessage = new GPTMessage("system", promptBuilder.toString());
-        GPTMessage userMessage = new GPTMessage("user", "음악을 추천해줘.");
+        GPTMessage userMessage = new GPTMessage("user", promptBuilder.toString());
         
-        gptRequest.setMessages(List.of(systemMessage, userMessage));
+        gptRequest.setMessages(List.of(userMessage));
         
         GPTResponse gptResponse = generateResponse(gptRequest);
         String responseText = gptResponse.getChoices().get(0).getMessage().getContent();

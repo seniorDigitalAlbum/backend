@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
-import java.util.Random;
 
 @Service
 @Tag(name = "Music Recommendation Service", description = "음악 추천 서비스")
@@ -28,7 +27,9 @@ public class MusicRecommendationService {
     
     @Operation(summary = "음악 추천 조회 또는 생성", description = "기존 음악 추천이 있으면 조회하고, 없으면 새로 생성합니다")
     public List<MusicRecommendation> getOrGenerateMusicRecommendations(
-            Long conversationId, String diary, String emotion, Double confidence) {
+            Long conversationId, 
+            com.chimaenono.dearmind.diary.DiaryPlan diaryPlan, 
+            com.chimaenono.dearmind.diary.Summary summary) {
         
         try {
             // 1. 기존 추천 음악 조회
@@ -44,7 +45,7 @@ public class MusicRecommendationService {
             
             // 2. GPT로 음악 추천 생성 (링크 없이)
             List<MusicRecommendation> newRecommendations = 
-                gptService.generateMusicRecommendations(diary, emotion, confidence);
+                gptService.generateMusicRecommendations(diaryPlan, summary);
             
             // 3. 검증된 데이터베이스에서 정확한 링크 찾기 및 저장
             for (MusicRecommendation music : newRecommendations) {
@@ -85,7 +86,7 @@ public class MusicRecommendationService {
                         } else {
                             // 최종 실패 시 검증된 랜덤 음악 사용
                             List<VerifiedMusicDatabase.MusicInfo> randomMusic = 
-                                verifiedMusicDatabase.getRandomMusicByMood(emotion, 1);
+                                verifiedMusicDatabase.getRandomMusicByMood("차분한", 1);
                             
                             if (!randomMusic.isEmpty()) {
                                 VerifiedMusicDatabase.MusicInfo fallback = randomMusic.get(0);

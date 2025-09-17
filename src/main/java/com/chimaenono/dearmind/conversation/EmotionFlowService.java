@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -16,6 +17,7 @@ import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysis;
 import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysisRepository;
 import com.chimaenono.dearmind.diary.EmotionFlow;
 
+@Slf4j
 @Service
 public class EmotionFlowService {
 
@@ -44,9 +46,15 @@ public class EmotionFlowService {
     @Operation(summary = "대화 감정 흐름 계산/저장", description = "conversationId에 대해 Emotion Flow를 계산하고 DB에 저장합니다.")
     @Transactional
     public void computeAndSaveFlow(Long conversationId) {
+        log.info("=== 감정 흐름 계산 시작 ===");
+        log.info("ConversationId: {}", conversationId);
+        
         // 1) 해당 대화의 '사용자 턴'을 순서대로 로드
         List<UserEmotionAnalysis> rows = loadOrderedUserTurns(conversationId);
+        log.info("로드된 UserEmotionAnalysis 개수: {}", rows.size());
+        
         if (rows.isEmpty()) {
+            log.warn("UserEmotionAnalysis 데이터가 없음, 빈 데이터로 저장");
             saveEmpty(conversationId);
             return;
         }
@@ -55,20 +63,34 @@ public class EmotionFlowService {
         List<Map<String, Double>> pSeq = new ArrayList<>();
         List<Double> confSeq = new ArrayList<>();
         List<String> idSeqForHash = new ArrayList<>();
+        
+        log.info("=== 감정 데이터 처리 시작 ===");
 
-        for (UserEmotionAnalysis r : rows) {
+        for (int i = 0; i < rows.size(); i++) {
+            UserEmotionAnalysis r = rows.get(i);
             Map<String, Double> p = null;
             String distJson = r.getCombinedDistribution();
+            
+            log.info("Turn {}: messageId={}, combinedEmotion={}, combinedConfidence={}", 
+                    i+1, 
+                    r.getConversationMessage() != null ? r.getConversationMessage().getId() : "null",
+                    r.getCombinedEmotion(),
+                    r.getCombinedConfidence());
+            
             if (distJson != null && !distJson.isBlank()) {
                 try {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> raw = om.readValue(distJson, Map.class);
                     p = normalizeToL6(raw);
-                } catch (Exception ignore) { /* fallback below */ }
+                    log.info("Turn {}: combinedDistribution 파싱 성공 - {}", i+1, p);
+                } catch (Exception e) {
+                    log.warn("Turn {}: combinedDistribution 파싱 실패 - {}", i+1, e.getMessage());
+                }
             }
             if (p == null) {
                 // 과거 데이터 호환: 라벨+신뢰도로 의사분포
                 p = pseudo(r.getCombinedEmotion(), safe(r.getCombinedConfidence(), 0.5));
+                log.info("Turn {}: 의사분포 생성 - {}", i+1, p);
             }
             pSeq.add(p);
             confSeq.add(safe(r.getCombinedConfidence(), 0.5));
@@ -80,15 +102,35 @@ public class EmotionFlowService {
             );
             idSeqForHash.add(mid);
         }
+        
+        log.info("처리된 확률 분포 시퀀스 개수: {}", pSeq.size());
+        log.info("처리된 신뢰도 시퀀스 개수: {}", confSeq.size());
 
         // 3) EMA 스무딩
+        log.info("=== EMA 스무딩 시작 (BETA={}) ===", BETA);
         List<Map<String, Double>> pSm = ema(pSeq, BETA);
+        log.info("EMA 스무딩 완료: {} → {} 시퀀스", pSeq.size(), pSm.size());
 
         // 4) 세그먼트 탐지
+        log.info("=== 세그먼트 탐지 시작 (W={}, TAU={}, MIN_SEG={}, COOLDOWN={}) ===", W, TAU, MIN_SEG, COOLDOWN);
         List<EmotionFlow.Segment> segments = segmentize(pSm, confSeq);
+        log.info("탐지된 세그먼트 개수: {}", segments.size());
+        
+        for (int i = 0; i < segments.size(); i++) {
+            EmotionFlow.Segment seg = segments.get(i);
+            log.info("세그먼트 {}: 턴 {}-{}, 주요감정={}, 평균신뢰도={:.3f}, valence={:.3f}", 
+                    i+1, seg.getStartTurn(), seg.getEndTurn(), seg.getDominant(), 
+                    seg.getMeanConf(), seg.getValenceMean());
+        }
 
         // 5) 메트릭/패턴
+        log.info("=== 메트릭 계산 시작 ===");
         EmotionFlow.Metrics metrics = buildMetrics(pSm);
+        log.info("계산된 패턴: {}", metrics.getPattern());
+        log.info("전환 횟수: {}", metrics.getFlips());
+        log.info("긍정 비율: {:.1f}%", metrics.getPositiveRatio() * 100);
+        log.info("최장 부정 구간: {}", metrics.getLongestNegativeRun());
+        log.info("최고 각성 턴: {}", metrics.getPeakArousalTurn());
 
         // 6) params + inputHash 기록
         Map<String, Object> params = Map.of(
@@ -107,11 +149,21 @@ public class EmotionFlowService {
         );
 
         // 8) 저장
+        log.info("=== DB 저장 시작 ===");
         Conversation conv = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new IllegalArgumentException("conversation not found: " + conversationId));
-        conv.setEmotionFlow(serialize(flowJson));
+        
+        String emotionFlowJson = serialize(flowJson);
+        conv.setEmotionFlow(emotionFlowJson);
         conv.setFlowPattern(metrics.getPattern());
+        
+        log.info("저장할 flowPattern: {}", metrics.getPattern());
+        log.info("저장할 emotionFlow JSON 길이: {} 문자", emotionFlowJson.length());
+        log.info("저장할 emotionFlow JSON (첫 200자): {}", 
+                emotionFlowJson.length() > 200 ? emotionFlowJson.substring(0, 200) + "..." : emotionFlowJson);
+        
         conversationRepository.save(conv);
+        log.info("=== 감정 흐름 계산 및 저장 완료 ===");
     }
 
     // ====== 내부 구현 ======

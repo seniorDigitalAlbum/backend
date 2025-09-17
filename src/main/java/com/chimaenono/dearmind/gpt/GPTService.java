@@ -58,8 +58,6 @@ public class GPTService {
     @Autowired
     private com.chimaenono.dearmind.diary.DiaryPlanService diaryPlanService;
     
-    @Autowired
-    private UserEmotionAnalysisRepository userEmotionAnalysisRepository;
     
     public GPTService() {
         this.httpClient = HttpClient.newBuilder()

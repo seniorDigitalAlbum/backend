@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
+import com.chimaenono.dearmind.diary.DiaryResponse;
 import com.chimaenono.dearmind.music.MusicRecommendation;
 import com.chimaenono.dearmind.music.MusicRecommendationService;
 

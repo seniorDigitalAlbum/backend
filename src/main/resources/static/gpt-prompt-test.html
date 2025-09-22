@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPT 질문 생성 프롬프트 테스트</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .test-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 1024px) {
+            .test-area {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .input-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .output-section {
+            background: #f0f8ff;
+            border-radius: 10px;
+            padding: 25px;
+            border-left: 5px solid #4caf50;
+        }
+        
+        .input-group {
+            margin: 15px 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .slider {
+            flex: 1;
+        }
+        
+        .slider-value {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            min-width: 50px;
+            text-align: center;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .output-area {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .success {
+            border-color: #4caf50;
+            background: #f1f8e9;
+        }
+        
+        .error {
+            border-color: #f44336;
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .loading {
+            border-color: #ff9800;
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+        
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .preset-btn {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 2px solid #1976d2;
+            padding: 10px;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .preset-btn:hover {
+            background: #1976d2;
+            color: white;
+        }
+        
+        .stats {
+            background: #e8f5e8;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .stats h4 {
+            margin: 0 0 10px 0;
+            color: #2e7d32;
+        }
+        
+        .history {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            background: white;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 3px solid #667eea;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .history-item:hover {
+            transform: translateX(5px);
+        }
+        
+        .history-item small {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 GPT 질문 생성 프롬프트 테스트</h1>
+        <p style="text-align: center; color: #666; font-size: 18px;">
+            감정 정보와 사용자 발화를 바꿔가며 AI 응답을 빠르게 테스트하세요
+        </p>
+
+        <div class="test-area">
+            <!-- 입력 섹션 -->
+            <div class="input-section">
+                <h2>📝 테스트 입력</h2>
+                
+                <!-- 프리셋 버튼들 -->
+                <div class="preset-buttons">
+                    <button class="preset-btn" onclick="loadPreset('happy')">😊 기쁜 상황</button>
+                    <button class="preset-btn" onclick="loadPreset('sad')">😢 슬픈 상황</button>
+                    <button class="preset-btn" onclick="loadPreset('angry')">😠 화난 상황</button>
+                    <button class="preset-btn" onclick="loadPreset('anxious')">😰 불안한 상황</button>
+                </div>
+                
+                <div class="input-group">
+                    <label for="userText">사용자 발화:</label>
+                    <textarea id="userText" placeholder="사용자가 말한 내용을 입력하세요..."></textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label for="emotion">통합 감정:</label>
+                    <select id="emotion">
+                        <option value="기쁨">😊 기쁨</option>
+                        <option value="슬픔">😢 슬픔</option>
+                        <option value="분노">😠 분노</option>
+                        <option value="불안">😰 불안</option>
+                        <option value="당황">😵 당황</option>
+                        <option value="상처">💔 상처</option>
+                        <option value="중립">😐 중립</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="confidence">신뢰도:</label>
+                    <div class="slider-container">
+                        <input type="range" id="confidence" class="slider" min="0" max="1" step="0.01" value="0.85">
+                        <div class="slider-value" id="confidenceValue">0.85</div>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="prevContext">이전 대화 맥락 (선택사항):</label>
+                    <textarea id="prevContext" placeholder="이전 대화 내용이 있다면 입력하세요..." rows="3"></textarea>
+                </div>
+                
+                <button onclick="testGPTPrompt()" id="testBtn">🚀 GPT 테스트 실행</button>
+                <button onclick="clearInputs()" id="clearBtn" style="background: #757575;">🗑️ 입력 초기화</button>
+            </div>
+
+            <!-- 출력 섹션 -->
+            <div class="output-section">
+                <h2>🎯 AI 응답 결과</h2>
+                
+                <div class="stats" id="stats" style="display: none;">
+                    <h4>📊 응답 통계</h4>
+                    <div id="statsContent"></div>
+                </div>
+                
+                <div class="output-area" id="output">
+                    여기에 AI 응답이 표시됩니다...
+                </div>
+                
+                <div class="input-group" style="margin-top: 20px;">
+                    <label>응답 평가:</label>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="rateResponse('good')" style="background: #4caf50; padding: 8px 16px; font-size: 14px;">👍 좋음</button>
+                        <button onclick="rateResponse('bad')" style="background: #f44336; padding: 8px 16px; font-size: 14px;">👎 나쁨</button>
+                        <button onclick="rateResponse('save')" style="background: #2196f3; padding: 8px 16px; font-size: 14px;">💾 저장</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 테스트 히스토리 -->
+        <div class="history">
+            <h3>📚 테스트 히스토리</h3>
+            <div id="historyList">
+                <p style="color: #666; text-align: center;">아직 테스트 기록이 없습니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api';
+        let testHistory = [];
+        let currentResponse = null;
+
+        // 신뢰도 슬라이더 업데이트
+        document.getElementById('confidence').oninput = function() {
+            document.getElementById('confidenceValue').textContent = this.value;
+        };
+
+        // 프리셋 데이터 로드
+        function loadPreset(type) {
+            const presets = {
+                happy: {
+                    userText: "오늘 손자가 와서 같이 놀았는데 정말 즐거웠어요. 옛날에 우리 아이들과 놀던 기억이 나네요.",
+                    emotion: "기쁨",
+                    confidence: 0.9,
+                    prevContext: "AI: 오늘 하루는 어떠셨나요?\n사용자: 그냥 평범했어요."
+                },
+                sad: {
+                    userText: "요즘 혼자 있는 시간이 많아서 외로워요. 예전에는 이렇게 조용하지 않았는데...",
+                    emotion: "슬픔",
+                    confidence: 0.85,
+                    prevContext: "AI: 어떤 기분이신가요?\n사용자: 요즘 기분이 별로예요."
+                },
+                angry: {
+                    userText: "병원에서 대기시간이 너무 길었어요. 예약했는데도 2시간이나 기다렸다니까요!",
+                    emotion: "분노",
+                    confidence: 0.8,
+                    prevContext: "AI: 오늘 어디 다녀오셨나요?\n사용자: 병원에 갔다 왔어요."
+                },
+                anxious: {
+                    userText: "건강검진 결과를 기다리고 있는데 너무 불안해요. 혹시 뭔가 잘못된 건 아닐까요?",
+                    emotion: "불안",
+                    confidence: 0.75,
+                    prevContext: "AI: 무슨 일로 걱정이 많으신가요?\n사용자: 며칠 전에 검사를 받았거든요."
+                }
+            };
+
+            const preset = presets[type];
+            if (preset) {
+                document.getElementById('userText').value = preset.userText;
+                document.getElementById('emotion').value = preset.emotion;
+                document.getElementById('confidence').value = preset.confidence;
+                document.getElementById('confidenceValue').textContent = preset.confidence;
+                document.getElementById('prevContext').value = preset.prevContext;
+            }
+        }
+
+        // 입력 초기화
+        function clearInputs() {
+            document.getElementById('userText').value = '';
+            document.getElementById('emotion').value = '기쁨';
+            document.getElementById('confidence').value = '0.85';
+            document.getElementById('confidenceValue').textContent = '0.85';
+            document.getElementById('prevContext').value = '';
+        }
+
+        // GPT 프롬프트 테스트 실행
+        async function testGPTPrompt() {
+            const userText = document.getElementById('userText').value.trim();
+            const emotion = document.getElementById('emotion').value;
+            const confidence = parseFloat(document.getElementById('confidence').value);
+            const prevContext = document.getElementById('prevContext').value.trim();
+
+            if (!userText) {
+                alert('사용자 발화를 입력해주세요.');
+                return;
+            }
+
+            const testBtn = document.getElementById('testBtn');
+            const output = document.getElementById('output');
+            
+            testBtn.disabled = true;
+            output.className = 'output-area loading';
+            output.textContent = '🤖 AI가 응답을 생성하고 있습니다...\n잠시만 기다려주세요.';
+
+            const startTime = Date.now();
+
+            try {
+                // 임시 ConversationMessage 생성 (테스트용)
+                const tempMessageId = Date.now();
+                
+                // GPT API 직접 호출을 위한 Mock 데이터 준비
+                const mockRequest = {
+                    conversationMessageId: tempMessageId,
+                    userText: userText,
+                    emotion: emotion,
+                    confidence: confidence,
+                    prevContext: prevContext
+                };
+
+                // generateEmotionBasedResponse 함수 직접 테스트
+                const response = await fetch(`${API_BASE_URL}/gpt/emotion-prompt-test`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userText: userText,
+                        emotion: emotion,
+                        confidence: confidence,
+                        prevContext: prevContext
+                    })
+                });
+
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+
+                if (!response.ok) {
+                    throw new Error(`API 오류 (${response.status}): ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                currentResponse = result;
+
+                // 새로운 API 응답에서 메시지 추출
+                const aiResponse = result.aiResponse || '응답을 받지 못했습니다.';
+
+                // 성공 출력
+                output.className = 'output-area success';
+                output.textContent = aiResponse;
+
+                // 통계 표시
+                showStats(responseTime, result);
+
+                // 히스토리에 추가
+                addToHistory({
+                    timestamp: new Date(),
+                    userText: userText,
+                    emotion: emotion,
+                    confidence: confidence,
+                    response: aiResponse,
+                    responseTime: responseTime
+                });
+
+            } catch (error) {
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+
+                output.className = 'output-area error';
+                output.textContent = `❌ 오류 발생: ${error.message}\n\n응답 시간: ${responseTime}ms`;
+
+                console.error('GPT 테스트 오류:', error);
+            } finally {
+                testBtn.disabled = false;
+            }
+        }
+
+        // 통계 표시
+        function showStats(responseTime, result) {
+            const stats = document.getElementById('stats');
+            const statsContent = document.getElementById('statsContent');
+            
+            // 새로운 API 응답에서 메시지 추출
+            const aiResponse = result.aiResponse || '';
+            const responseLength = aiResponse.length;
+            
+            statsContent.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
+                    <div><strong>응답 시간:</strong> ${responseTime}ms</div>
+                    <div><strong>응답 길이:</strong> ${responseLength}자</div>
+                    <div><strong>감정:</strong> ${document.getElementById('emotion').value}</div>
+                    <div><strong>신뢰도:</strong> ${document.getElementById('confidence').value}</div>
+                </div>
+            `;
+            
+            stats.style.display = 'block';
+        }
+
+        // 히스토리에 추가
+        function addToHistory(testData) {
+            testHistory.unshift(testData);
+            
+            // 최대 20개까지만 보관
+            if (testHistory.length > 20) {
+                testHistory = testHistory.slice(0, 20);
+            }
+            
+            updateHistoryDisplay();
+        }
+
+        // 히스토리 표시 업데이트
+        function updateHistoryDisplay() {
+            const historyList = document.getElementById('historyList');
+            
+            if (testHistory.length === 0) {
+                historyList.innerHTML = '<p style="color: #666; text-align: center;">아직 테스트 기록이 없습니다.</p>';
+                return;
+            }
+
+            historyList.innerHTML = testHistory.map((item, index) => `
+                <div class="history-item" onclick="loadFromHistory(${index})">
+                    <div><strong>${item.emotion}</strong> (${item.confidence}) - ${item.responseTime}ms</div>
+                    <div style="margin: 5px 0; font-size: 14px;">${item.userText.substring(0, 100)}${item.userText.length > 100 ? '...' : ''}</div>
+                    <div style="margin: 5px 0; font-size: 13px; color: #4caf50;">${item.response.substring(0, 80)}${item.response.length > 80 ? '...' : ''}</div>
+                    <small>${item.timestamp.toLocaleString()}</small>
+                </div>
+            `).join('');
+        }
+
+        // 히스토리에서 로드
+        function loadFromHistory(index) {
+            const item = testHistory[index];
+            if (!item) return;
+
+            document.getElementById('userText').value = item.userText;
+            document.getElementById('emotion').value = item.emotion;
+            document.getElementById('confidence').value = item.confidence;
+            document.getElementById('confidenceValue').textContent = item.confidence;
+
+            // 출력에도 표시
+            const output = document.getElementById('output');
+            output.className = 'output-area success';
+            output.textContent = item.response;
+            currentResponse = { aiResponse: item.response };
+
+            showStats(item.responseTime, { aiResponse: item.response });
+        }
+
+        // 응답 평가
+        function rateResponse(rating) {
+            if (!currentResponse) {
+                alert('평가할 응답이 없습니다.');
+                return;
+            }
+
+            const messages = {
+                good: '👍 좋은 응답으로 평가했습니다!',
+                bad: '👎 개선이 필요한 응답으로 평가했습니다.',
+                save: '💾 응답을 저장했습니다!'
+            };
+
+            // 여기서 실제로는 서버에 평가 데이터를 보낼 수 있음
+            console.log(`응답 평가: ${rating}`, currentResponse);
+            
+            alert(messages[rating]);
+        }
+
+        // 페이지 로드 시 초기화
+        window.onload = function() {
+            console.log('GPT 프롬프트 테스트 페이지가 로드되었습니다.');
+            
+            // 기본 프리셋 로드
+            loadPreset('happy');
+        };
+    </script>
+</body>
+</html>

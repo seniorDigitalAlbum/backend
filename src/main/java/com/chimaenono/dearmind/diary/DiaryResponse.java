@@ -1,4 +1,4 @@
-package com.chimaenono.dearmind.conversation;
+package com.chimaenono.dearmind.diary;
 
 import com.chimaenono.dearmind.music.MusicRecommendation;
 import io.swagger.v3.oas.annotations.media.Schema;

@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DearMind API Flow Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 5px solid #667eea;
+        }
+        
+        .input-group {
+            margin: 15px 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 5px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .step {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        
+        .success {
+            background: #e8f5e8;
+            border-color: #4caf50;
+            color: #2e7d32;
+        }
+        
+        .error {
+            background: #ffebee;
+            border-color: #f44336;
+            color: #c62828;
+        }
+        
+        .info {
+            background: #fff3e0;
+            border-color: #ff9800;
+            color: #ef6c00;
+        }
+        
+        .flow-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .flow-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .api-step {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .api-step h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .api-step.completed {
+            border-left-color: #4caf50;
+            background: #e8f5e8;
+        }
+        
+        .api-step.active {
+            border-left-color: #ff9800;
+            background: #fff3e0;
+        }
+        
+        .api-step.error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        
+        .response-data {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .current-state {
+            background: #e1f5fe;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .current-state h3 {
+            margin: 0 0 10px 0;
+            color: #0277bd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 DearMind API Flow Test</h1>
+        <p style="text-align: center; color: #666; font-size: 18px;">
+            API Usage Guide 순서대로 전체 플로우 테스트
+        </p>
+
+        <!-- 현재 상태 표시 -->
+        <div class="current-state">
+            <h3>📊 현재 상태</h3>
+            <div id="currentState">
+                <p><strong>ConversationId:</strong> <span id="currentConversationId">-</span></p>
+                <p><strong>MessageId:</strong> <span id="currentMessageId">-</span></p>
+                <p><strong>CameraSessionId:</strong> <span id="currentCameraSessionId">-</span></p>
+                <p><strong>MicrophoneSessionId:</strong> <span id="currentMicrophoneSessionId">-</span></p>
+            </div>
+        </div>
+
+        <!-- 초기 설정 -->
+        <div class="section">
+            <h2>🎯 초기 설정</h2>
+            <div class="input-group">
+                <label for="userId">사용자 ID:</label>
+                <input type="text" id="userId" value="testUser123" placeholder="사용자 ID 입력">
+            </div>
+            <div class="input-group">
+                <label for="questionId">질문 ID:</label>
+                <input type="number" id="questionId" value="1" placeholder="질문 ID 입력">
+            </div>
+        </div>
+
+        <!-- 대화 입력 -->
+        <div class="section">
+            <h2>💬 대화 입력</h2>
+            <div class="flow-container">
+                <div>
+                    <h3>📷 표정 감정</h3>
+                    <div class="input-group">
+                        <label for="facialEmotion">감정:</label>
+                        <select id="facialEmotion">
+                            <option value="기쁨">기쁨</option>
+                            <option value="슬픔">슬픔</option>
+                            <option value="분노">분노</option>
+                            <option value="불안">불안</option>
+                            <option value="당황">당황</option>
+                            <option value="상처">상처</option>
+                            <option value="중립">중립</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="facialConfidence">신뢰도:</label>
+                        <input type="number" id="facialConfidence" value="0.85" min="0" max="1" step="0.01" placeholder="0.0 ~ 1.0">
+                    </div>
+                </div>
+                <div>
+                    <h3>🎤 사용자 발화</h3>
+                    <div class="input-group">
+                        <label for="userText">발화 텍스트:</label>
+                        <textarea id="userText" rows="3" placeholder="사용자가 말한 내용을 입력하세요"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API 플로우 실행 -->
+        <div class="section">
+            <h2>🚀 API 플로우 실행</h2>
+            <button onclick="startFullFlow()" id="startFlowBtn">전체 플로우 시작</button>
+            <button onclick="resetFlow()" id="resetBtn">초기화</button>
+        </div>
+
+        <!-- API 단계별 진행 상황 -->
+        <div class="section">
+            <h2>📋 API 실행 단계</h2>
+            <div id="apiSteps">
+                <div class="api-step" id="step1">
+                    <h4>1. 대화 시작 (통합 API)</h4>
+                    <div class="response-data" id="step1-response"></div>
+                </div>
+                <div class="api-step" id="step2">
+                    <h4>2. 발화 시작</h4>
+                    <div class="response-data" id="step2-response"></div>
+                </div>
+                <div class="api-step" id="step3">
+                    <h4>3. 사용자 메시지 저장</h4>
+                    <div class="response-data" id="step3-response"></div>
+                </div>
+                <div class="api-step" id="step4">
+                    <h4>4. 표정 감정 분석 저장</h4>
+                    <div class="response-data" id="step4-response"></div>
+                </div>
+                <div class="api-step" id="step5">
+                    <h4>5. 이전 발화 조회</h4>
+                    <div class="response-data" id="step5-response"></div>
+                </div>
+                <div class="api-step" id="step6">
+                    <h4>6. KoBERT API 호출 (말 감정 분석)</h4>
+                    <div class="response-data" id="step6-response"></div>
+                </div>
+                <div class="api-step" id="step7">
+                    <h4>7. 말 감정 분석 저장</h4>
+                    <div class="response-data" id="step7-response"></div>
+                </div>
+                <div class="api-step" id="step8">
+                    <h4>8. 통합 감정 저장</h4>
+                    <div class="response-data" id="step8-response"></div>
+                </div>
+                <div class="api-step" id="step9">
+                    <h4>9. 다음 답변 생성 (GPT)</h4>
+                    <div class="response-data" id="step9-response"></div>
+                </div>
+                <div class="api-step" id="step10">
+                    <h4>10. AI 응답 완료</h4>
+                    <div class="response-data" id="step10-response"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 로그 출력 -->
+        <div class="section">
+            <h2>📝 실행 로그</h2>
+            <div id="logOutput" class="step" style="max-height: 300px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api';
+        
+        // 현재 상태 변수들
+        let currentConversationId = null;
+        let currentMessageId = null;
+        let currentCameraSessionId = null;
+        let currentMicrophoneSessionId = null;
+        let conversationContext = {
+            prevUser: "",
+            prevSys: "",
+            currUser: ""
+        };
+
+        // 로그 출력 함수
+        function log(message, type = 'info') {
+            const logOutput = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logOutput.textContent += logEntry;
+            logOutput.scrollTop = logOutput.scrollHeight;
+            console.log(message);
+        }
+
+        // API 단계 상태 업데이트
+        function updateStepStatus(stepNumber, status, responseData = null) {
+            const step = document.getElementById(`step${stepNumber}`);
+            const responseDiv = document.getElementById(`step${stepNumber}-response`);
+            
+            step.className = `api-step ${status}`;
+            
+            if (responseData) {
+                responseDiv.textContent = JSON.stringify(responseData, null, 2);
+            }
+        }
+
+        // 현재 상태 업데이트
+        function updateCurrentState() {
+            document.getElementById('currentConversationId').textContent = currentConversationId || '-';
+            document.getElementById('currentMessageId').textContent = currentMessageId || '-';
+            document.getElementById('currentCameraSessionId').textContent = currentCameraSessionId || '-';
+            document.getElementById('currentMicrophoneSessionId').textContent = currentMicrophoneSessionId || '-';
+        }
+
+        // 표정 감정 데이터 생성 함수
+        function generateFacialEmotionData(emotion, confidence) {
+            const now = new Date();
+            const details = [];
+            
+            // 3초 동안 3번 캡처 시뮬레이션
+            for (let i = 0; i < 3; i++) {
+                const captureTime = new Date(now.getTime() + i * 1000);
+                details.push({
+                    timestamp: captureTime.toISOString(),
+                    emotion: emotion,
+                    confidence: confidence + (Math.random() * 0.1 - 0.05) // 약간의 변동
+                });
+            }
+
+            return {
+                finalEmotion: emotion,
+                totalCaptures: 3,
+                emotionCounts: {
+                    [emotion]: 3
+                },
+                averageConfidence: confidence,
+                captureDetails: details
+            };
+        }
+
+        // KoBERT API 호출 (실제 API)
+        async function callKoBERTAPI(userText) {
+            try {
+                log('KoBERT API 호출 중...');
+                
+                const response = await fetch('http://127.0.0.1:8001/predict_emotion', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prev_user: conversationContext.prevUser,
+                        prev_sys: conversationContext.prevSys,
+                        curr_user: userText
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`KoBERT API 오류: ${response.status}`);
+                }
+
+                const result = await response.json();
+                log(`KoBERT API 성공: ${result.predicted_label} (${(result.confidence * 100).toFixed(1)}%)`);
+                
+                return {
+                    text: userText,
+                    analysisResult: {
+                        details: {
+                            predicted_label: result.predicted_label,
+                            confidence: result.confidence,
+                            all_probabilities: result.all_probabilities
+                        }
+                    },
+                    emotion: result.predicted_label,
+                    confidence: result.confidence
+                };
+                
+            } catch (error) {
+                log(`KoBERT API 실패, 기본값 사용: ${error.message}`, 'error');
+                
+                // 폴백 데이터
+                return {
+                    text: userText,
+                    analysisResult: {
+                        details: {
+                            predicted_label: "기쁨",
+                            confidence: 0.7,
+                            all_probabilities: {
+                                "기쁨": 0.7,
+                                "슬픔": 0.1,
+                                "분노": 0.05,
+                                "불안": 0.05,
+                                "당황": 0.05,
+                                "상처": 0.05
+                            }
+                        }
+                    },
+                    emotion: "기쁨",
+                    confidence: 0.7
+                };
+            }
+        }
+
+        // API 호출 헬퍼 함수
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+            
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(`API 오류 (${response.status}): ${data.message || '알 수 없는 오류'}`);
+            }
+            
+            return data;
+        }
+
+        // 전체 플로우 실행
+        async function startFullFlow() {
+            try {
+                const startBtn = document.getElementById('startFlowBtn');
+                startBtn.disabled = true;
+                
+                // 입력값 가져오기
+                const userId = document.getElementById('userId').value;
+                const questionId = parseInt(document.getElementById('questionId').value);
+                const facialEmotion = document.getElementById('facialEmotion').value;
+                const facialConfidence = parseFloat(document.getElementById('facialConfidence').value);
+                const userText = document.getElementById('userText').value;
+                
+                if (!userId || !questionId || !userText) {
+                    alert('모든 필수 값을 입력해주세요.');
+                    startBtn.disabled = false;
+                    return;
+                }
+
+                log('=== API 플로우 시작 ===');
+                
+                // 1단계: 대화 시작 (통합 API)
+                log('1단계: 대화 시작 중...');
+                updateStepStatus(1, 'active');
+                
+                const startResponse = await apiCall('/conversations/start', 'POST', {
+                    userId: userId,
+                    questionId: questionId
+                });
+                
+                currentConversationId = startResponse.conversationId;
+                currentCameraSessionId = startResponse.cameraSessionId;
+                currentMicrophoneSessionId = startResponse.microphoneSessionId;
+                updateCurrentState();
+                
+                updateStepStatus(1, 'completed', startResponse);
+                log(`1단계 완료: 대화 ID ${currentConversationId}`);
+
+                // 2단계: 발화 시작
+                log('2단계: 발화 시작 중...');
+                updateStepStatus(2, 'active');
+                
+                const speechStartResponse = await apiCall('/microphone/speech/start', 'POST', {
+                    microphoneSessionId: currentMicrophoneSessionId,
+                    cameraSessionId: currentCameraSessionId,
+                    userId: userId
+                });
+                
+                updateStepStatus(2, 'completed', speechStartResponse);
+                log('2단계 완료: 발화 시작됨');
+
+                // 3단계: ConversationMessage 직접 저장 (STT 없이)
+                log('3단계: 사용자 메시지 저장 중...');
+                updateStepStatus(3, 'active');
+                
+                // ConversationMessage 직접 생성 (STT 없이)
+                currentMessageId = Date.now(); // 임시 ID 생성
+                const messageResponse = await apiCall(`/conversations/${currentConversationId}/messages/user`, 'POST', {
+                    content: userText,
+                    senderType: 'USER'
+                });
+                
+                currentMessageId = messageResponse.id || currentMessageId;
+                updateCurrentState();
+                
+                updateStepStatus(3, 'completed', messageResponse);
+                log(`3단계 완료: 메시지 ID ${currentMessageId}`);
+
+                // 4단계: 표정 감정 분석 저장
+                log('4단계: 표정 감정 분석 저장 중...');
+                updateStepStatus(4, 'active');
+                
+                const facialEmotionData = generateFacialEmotionData(facialEmotion, facialConfidence);
+                const facialResponse = await apiCall('/emotion-analysis/facial', 'POST', {
+                    conversationMessageId: currentMessageId,
+                    facialEmotionData: facialEmotionData
+                });
+                
+                updateStepStatus(4, 'completed', facialResponse);
+                log('4단계 완료: 표정 감정 저장됨');
+
+                // 5단계: 이전 발화 조회
+                log('5단계: 이전 발화 조회 중...');
+                updateStepStatus(5, 'active');
+                
+                const contextResponse = await apiCall(`/conversations/context/${currentMessageId}`);
+                
+                // 대화 맥락 업데이트
+                conversationContext.prevUser = contextResponse.prevUser || "";
+                conversationContext.prevSys = contextResponse.prevSys || "";
+                conversationContext.currUser = contextResponse.currUser || userText;
+                
+                updateStepStatus(5, 'completed', contextResponse);
+                log('5단계 완료: 이전 발화 조회됨');
+
+                // 6단계: KoBERT API 호출
+                log('6단계: KoBERT API 호출 중...');
+                updateStepStatus(6, 'active');
+                
+                const speechEmotionData = await callKoBERTAPI(userText);
+                
+                updateStepStatus(6, 'completed', speechEmotionData);
+                log('6단계 완료: 말 감정 분석됨');
+
+                // 7단계: 말 감정 분석 저장
+                log('7단계: 말 감정 분석 저장 중...');
+                updateStepStatus(7, 'active');
+                
+                const speechResponse = await apiCall('/emotion-analysis/speech', 'POST', {
+                    conversationMessageId: currentMessageId,
+                    speechEmotionData: JSON.stringify(speechEmotionData)
+                });
+                
+                updateStepStatus(7, 'completed', speechResponse);
+                log('7단계 완료: 말 감정 저장됨');
+
+                // 8단계: 통합 감정 저장
+                log('8단계: 통합 감정 저장 중...');
+                updateStepStatus(8, 'active');
+                
+                const combineResponse = await apiCall('/emotion-analysis/combine', 'POST', {
+                    conversationMessageId: currentMessageId
+                });
+                
+                updateStepStatus(8, 'completed', combineResponse);
+                log('8단계 완료: 통합 감정 저장됨');
+
+                // 9단계: 다음 답변 생성 (GPT)
+                log('9단계: GPT 답변 생성 중...');
+                updateStepStatus(9, 'active');
+                
+                const gptResponse = await apiCall('/gpt/generate', 'POST', {
+                    conversationMessageId: currentMessageId
+                });
+                
+                // 대화 맥락 업데이트
+                conversationContext.prevUser = userText;
+                conversationContext.prevSys = gptResponse.aiResponse;
+                
+                updateStepStatus(9, 'completed', gptResponse);
+                log('9단계 완료: AI 답변 생성됨');
+
+                // 10단계: AI 응답 완료 (TTS 없이)
+                log('10단계: AI 응답 처리 완료');
+                updateStepStatus(10, 'active');
+                
+                const finalResponse = {
+                    aiResponse: gptResponse.aiResponse,
+                    status: 'completed',
+                    message: 'AI 응답이 성공적으로 생성되었습니다.'
+                };
+                
+                updateStepStatus(10, 'completed', finalResponse);
+                log('10단계 완료: AI 응답 처리됨');
+
+                log('=== 전체 플로우 완료 ===');
+                
+            } catch (error) {
+                log(`오류 발생: ${error.message}`, 'error');
+                
+                // 실패한 단계 표시
+                const activeStep = document.querySelector('.api-step.active');
+                if (activeStep) {
+                    activeStep.className = 'api-step error';
+                }
+                
+            } finally {
+                document.getElementById('startFlowBtn').disabled = false;
+            }
+        }
+
+        // 플로우 초기화
+        function resetFlow() {
+            // 상태 초기화
+            currentConversationId = null;
+            currentMessageId = null;
+            currentCameraSessionId = null;
+            currentMicrophoneSessionId = null;
+            conversationContext = {
+                prevUser: "",
+                prevSys: "",
+                currUser: ""
+            };
+            updateCurrentState();
+            
+            // UI 초기화
+            const steps = document.querySelectorAll('.api-step');
+            steps.forEach(step => {
+                step.className = 'api-step';
+            });
+            
+            const responses = document.querySelectorAll('.response-data');
+            responses.forEach(response => {
+                response.textContent = '';
+            });
+            
+            document.getElementById('logOutput').textContent = '';
+            
+            log('플로우가 초기화되었습니다.');
+        }
+
+        // 페이지 로드 시 초기화
+        window.onload = function() {
+            log('API Flow Test 페이지가 로드되었습니다.');
+            updateCurrentState();
+        };
+    </script>
+</body>
+</html>

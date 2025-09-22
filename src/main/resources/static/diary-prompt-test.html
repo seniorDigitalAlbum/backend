@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>일기 생성 프롬프트 테스트</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .test-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 1200px) {
+            .test-area {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .input-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .output-section {
+            background: #f0f8ff;
+            border-radius: 10px;
+            padding: 25px;
+            border-left: 5px solid #4caf50;
+        }
+        
+        .input-group {
+            margin: 15px 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .output-area {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Malgun Gothic', sans-serif;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+        
+        .success {
+            border-color: #4caf50;
+            background: #f1f8e9;
+        }
+        
+        .error {
+            border-color: #f44336;
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .loading {
+            border-color: #ff9800;
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+        
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .preset-btn {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 2px solid #1976d2;
+            padding: 10px;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .preset-btn:hover {
+            background: #1976d2;
+            color: white;
+        }
+        
+        .stats {
+            background: #e8f5e8;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .stats h4 {
+            margin: 0 0 10px 0;
+            color: #2e7d32;
+        }
+        
+        .history {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            background: white;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 3px solid #667eea;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .history-item:hover {
+            transform: translateX(5px);
+        }
+        
+        .history-item small {
+            color: #666;
+        }
+        
+        .json-input {
+            min-height: 200px;
+            font-size: 12px;
+        }
+        
+        .diary-output {
+            font-size: 16px;
+            line-height: 1.8;
+            background: #fffef7;
+            border: 2px solid #f0e68c;
+            padding: 25px;
+            border-radius: 10px;
+        }
+        
+        .prompt-view {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 15px;
+        }
+        
+        .tab {
+            background: #e0e0e0;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 일기 생성 프롬프트 테스트</h1>
+        <p style="text-align: center; color: #666; font-size: 18px;">
+            Summary JSON과 DiaryPlan JSON을 입력하여 일기 생성 프롬프트를 테스트하세요
+        </p>
+
+        <div class="test-area">
+            <!-- 입력 섹션 -->
+            <div class="input-section">
+                <h2>📋 테스트 입력</h2>
+                
+                <!-- 프리셋 버튼들 -->
+                <div class="preset-buttons">
+                    <button class="preset-btn" onclick="loadPreset('childhood')">👶 어린시절 추억</button>
+                    <button class="preset-btn" onclick="loadPreset('school')">🏫 학교 시절</button>
+                    <button class="preset-btn" onclick="loadPreset('family')">👨‍👩‍👧‍👦 가족 이야기</button>
+                    <button class="preset-btn" onclick="loadPreset('happy')">😊 행복한 기억</button>
+                    <button class="preset-btn" onclick="loadPreset('sad')">😢 슬픈 기억</button>
+                    <button class="preset-btn" onclick="loadPreset('growth')">🌱 성장 이야기</button>
+                </div>
+                
+                <div class="input-group">
+                    <label for="summaryJson">Summary JSON:</label>
+                    <textarea id="summaryJson" class="json-input" placeholder="요약 JSON을 입력하세요..."></textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label for="diaryPlanJson">DiaryPlan JSON:</label>
+                    <textarea id="diaryPlanJson" class="json-input" placeholder="DiaryPlan JSON을 입력하세요..."></textarea>
+                </div>
+                
+                <button onclick="testDiaryPrompt()" id="testBtn">📝 일기 생성 테스트</button>
+                <button onclick="clearInputs()" id="clearBtn" style="background: #757575;">🗑️ 입력 초기화</button>
+            </div>
+
+            <!-- 출력 섹션 -->
+            <div class="output-section">
+                <h2>📖 일기 생성 결과</h2>
+                
+                <div class="tabs">
+                    <button class="tab active" onclick="showTab('diary')">📝 생성된 일기</button>
+                    <button class="tab" onclick="showTab('prompt')">🔧 프롬프트</button>
+                </div>
+                
+                <div id="diary-tab" class="tab-content active">
+                    <div class="stats" id="stats" style="display: none;">
+                        <h4>📊 생성 통계</h4>
+                        <div id="statsContent"></div>
+                    </div>
+                    
+                    <div class="output-area diary-output" id="diaryOutput">
+                        여기에 생성된 일기가 표시됩니다...
+                    </div>
+                    
+                    <div class="input-group" style="margin-top: 20px;">
+                        <label>일기 평가:</label>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="rateDiary('excellent')" style="background: #4caf50; padding: 8px 16px; font-size: 14px;">🌟 훌륭함</button>
+                            <button onclick="rateDiary('good')" style="background: #2196f3; padding: 8px 16px; font-size: 14px;">👍 좋음</button>
+                            <button onclick="rateDiary('fair')" style="background: #ff9800; padding: 8px 16px; font-size: 14px;">⚖️ 보통</button>
+                            <button onclick="rateDiary('poor')" style="background: #f44336; padding: 8px 16px; font-size: 14px;">👎 나쁨</button>
+                            <button onclick="rateDiary('save')" style="background: #9c27b0; padding: 8px 16px; font-size: 14px;">💾 저장</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="prompt-tab" class="tab-content">
+                    <div class="prompt-view" id="promptView">
+                        프롬프트가 여기에 표시됩니다...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 테스트 히스토리 -->
+        <div class="history">
+            <h3>📚 테스트 히스토리</h3>
+            <div id="historyList">
+                <p style="color: #666; text-align: center;">아직 테스트 기록이 없습니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api';
+        let testHistory = [];
+        let currentResponse = null;
+
+        // 탭 전환
+        function showTab(tabName) {
+            // 모든 탭과 콘텐츠 비활성화
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // 선택된 탭과 콘텐츠 활성화
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        // 프리셋 데이터 로드
+        function loadPreset(type) {
+            const presets = {
+                childhood: {
+                    summaryJson: `{
+  "meta": {"date": "2025-09-16", "locale": "ko-KR"},
+  "situation": "어린 시절 동네에서 친구들과 놀던 추억을 회상하며 대화했습니다.",
+  "events": [
+    "동네 골목에서 숨바꼭질을 하며 놀았던 기억",
+    "엄마가 부르는 소리에 집으로 뛰어가던 모습",
+    "친구들과 함께 라면을 끓여 먹던 추억"
+  ],
+  "anchors": {
+    "people": ["동네 친구들", "엄마"],
+    "place": ["동네 골목", "우리 집"],
+    "era": "초등학교 시절",
+    "objects": ["라면", "숨을 곳"]
+  },
+  "highlights": {
+    "best_moment": "친구들과 함께 웃으며 놀던 순간",
+    "hard_moment": "집에 들어가기 싫어서 숨어있던 순간",
+    "insight": "어린 시절의 순수한 즐거움이 가장 소중한 보물이었다"
+  },
+  "quotes": ["그때는 정말 시간 가는 줄 몰랐어요"]
+}`,
+                    diaryPlanJson: `{
+  "flowPattern": "U-shape",
+  "opening": {"dominant": "그리움", "valenceMean": -0.3},
+  "turningPoint": {"turn": 4, "dominant": "기쁨"},
+  "closing": {"dominant": "행복", "valenceMean": 0.8},
+  "styleHints": {
+    "toneStart": "차분한 회상",
+    "toneMid": "점점 밝아지는",
+    "toneEnd": "따뜻한 감사"
+  }
+}`
+                },
+                school: {
+                    summaryJson: `{
+  "meta": {"date": "2025-09-16", "locale": "ko-KR"},
+  "situation": "중학교 시절 첫 시험을 보던 긴장되고 떨렸던 경험을 나누었습니다.",
+  "events": [
+    "첫 중간고사를 앞두고 밤늦게 공부했던 기억",
+    "시험 당일 아침 긴장해서 밥을 못 먹었던 일",
+    "결과를 받고 생각보다 잘 나와서 기뻤던 순간"
+  ],
+  "anchors": {
+    "people": ["담임선생님", "엄마", "친구들"],
+    "place": ["교실", "집 책상"],
+    "era": "중학교 1학년",
+    "objects": ["시험지", "교과서", "연필"]
+  },
+  "highlights": {
+    "best_moment": "결과를 보고 안도의 한숨을 쉬던 순간",
+    "hard_moment": "시험 전날 밤 너무 긴장해서 잠이 안 왔던 시간",
+    "insight": "노력한 만큼 결과가 따라온다는 것을 처음 깨달았다"
+  },
+  "quotes": ["그때 처음으로 공부의 보람을 느꼈어요"]
+}`,
+                    diaryPlanJson: `{
+  "flowPattern": "상승형",
+  "opening": {"dominant": "불안", "valenceMean": -0.6},
+  "turningPoint": {"turn": 5, "dominant": "안도"},
+  "closing": {"dominant": "뿌듯함", "valenceMean": 0.7},
+  "styleHints": {
+    "toneStart": "긴장감 있는",
+    "toneMid": "점차 안정되는",
+    "toneEnd": "뿌듯하고 감사한"
+  }
+}`
+                },
+                family: {
+                    summaryJson: `{
+  "meta": {"date": "2025-09-16", "locale": "ko-KR"},
+  "situation": "할머니와 함께 김치를 담그던 따뜻한 가족의 시간을 회상했습니다.",
+  "events": [
+    "할머니 손을 잡고 김치 담그는 법을 배웠던 기억",
+    "배추를 절이는 동안 할머니 옛날이야기를 들었던 시간",
+    "완성된 김치를 맛보며 할머니께 칭찬받았던 순간"
+  ],
+  "anchors": {
+    "people": ["할머니", "엄마"],
+    "place": ["할머니 집 부엌", "마당"],
+    "era": "고등학교 시절",
+    "objects": ["배추", "고춧가루", "김치통"]
+  },
+  "highlights": {
+    "best_moment": "할머니가 내가 담근 김치가 맛있다고 하셨던 순간",
+    "hard_moment": "처음이라 서툴러서 할머니께 미안했던 마음",
+    "insight": "가족의 손맛은 사랑으로 만들어진다는 것을 깨달았다"
+  },
+  "quotes": ["할머니 손맛을 따라할 수는 없지만 마음만은 담을 수 있을 것 같아요"]
+}`
+                },
+                happy: {
+                    summaryJson: `{
+  "meta": {"date": "2025-09-16", "locale": "ko-KR"},
+  "situation": "대학 졸업식 날의 기쁘고 뿌듯했던 순간들을 나누었습니다.",
+  "events": [
+    "졸업가운을 입고 가족들과 사진을 찍었던 순간",
+    "친구들과 함께 졸업식 후 축하 파티를 했던 기억",
+    "부모님이 눈물을 흘리며 축하해주셨던 감동적인 순간"
+  ],
+  "anchors": {
+    "people": ["부모님", "대학 친구들", "교수님"],
+    "place": ["대학교 강당", "졸업식장"],
+    "era": "20대 초반",
+    "objects": ["졸업장", "졸업가운", "꽃다발"]
+  },
+  "highlights": {
+    "best_moment": "부모님의 자랑스러운 눈빛을 보았던 순간",
+    "hard_moment": "친구들과 헤어져야 한다는 아쉬움",
+    "insight": "많은 사람들의 사랑과 응원이 있었기에 가능했던 성취였다"
+  },
+  "quotes": ["이제 정말 어른이 된 기분이에요"]
+}`
+                },
+                sad: {
+                    summaryJson: `{
+  "meta": {"date": "2025-09-16", "locale": "ko-KR"},
+  "situation": "반려견과의 마지막 순간들을 회상하며 슬픔과 그리움을 나누었습니다.",
+  "events": [
+    "아픈 강아지를 병원에 데려갔던 마지막 날",
+    "집에서 조용히 강아지를 안고 있었던 시간",
+    "무지개 다리를 건넜다는 소식을 들었던 순간"
+  ],
+  "anchors": {
+    "people": ["수의사 선생님", "가족들"],
+    "place": ["동물병원", "집 거실"],
+    "era": "성인이 되어서",
+    "objects": ["강아지 목줄", "좋아하던 장난감"]
+  },
+  "highlights": {
+    "best_moment": "마지막까지 꼬리를 흔들어주었던 모습",
+    "hard_moment": "작별 인사를 해야 했던 그 순간",
+    "insight": "짧은 만남이었지만 서로에게 큰 의미였던 소중한 시간이었다"
+  },
+  "quotes": ["정말 고마웠어, 많이 사랑했어"]
+}`
+                },
+                growth: {
+                    summaryJson: `{
+  "meta": {"date": "2025-09-16", "locale": "ko-KR"},
+  "situation": "첫 직장에서의 실수와 그로 인한 성장 경험을 나누었습니다.",
+  "events": [
+    "중요한 프레젠테이션에서 실수를 했던 순간",
+    "상사에게 혼나고 자책하며 집에 돌아왔던 날",
+    "다시 일어서서 더 열심히 준비했던 다음 기회"
+  ],
+  "anchors": {
+    "people": ["상사", "동료들", "가족"],
+    "place": ["회사 회의실", "집"],
+    "era": "사회 초년생 시절",
+    "objects": ["프레젠테이션 자료", "노트북"]
+  },
+  "highlights": {
+    "best_moment": "두 번째 기회에서 성공적으로 해냈던 순간",
+    "hard_moment": "모든 것이 무너진 것 같았던 그 첫 실수의 순간",
+    "insight": "실패는 끝이 아니라 더 나은 시작을 위한 발판이었다"
+  },
+  "quotes": ["그때 그 실수가 지금의 저를 만들어준 것 같아요"]
+}`
+                }
+            };
+
+            const preset = presets[type];
+            if (preset) {
+                document.getElementById('summaryJson').value = preset.summaryJson;
+                document.getElementById('diaryPlanJson').value = preset.diaryPlanJson;
+            }
+        }
+
+        // 입력 초기화
+        function clearInputs() {
+            document.getElementById('summaryJson').value = '';
+            document.getElementById('diaryPlanJson').value = '';
+            document.getElementById('diaryOutput').textContent = '여기에 생성된 일기가 표시됩니다...';
+            document.getElementById('diaryOutput').className = 'output-area diary-output';
+            document.getElementById('promptView').textContent = '프롬프트가 여기에 표시됩니다...';
+            document.getElementById('stats').style.display = 'none';
+        }
+
+        // 일기 생성 프롬프트 테스트
+        async function testDiaryPrompt() {
+            const summaryJson = document.getElementById('summaryJson').value.trim();
+            const diaryPlanJson = document.getElementById('diaryPlanJson').value.trim();
+
+            if (!summaryJson || !diaryPlanJson) {
+                alert('Summary JSON과 DiaryPlan JSON을 모두 입력해주세요.');
+                return;
+            }
+
+            const testBtn = document.getElementById('testBtn');
+            const diaryOutput = document.getElementById('diaryOutput');
+            const promptView = document.getElementById('promptView');
+            
+            testBtn.disabled = true;
+            diaryOutput.className = 'output-area diary-output loading';
+            diaryOutput.textContent = '📝 일기를 생성하고 있습니다...\n잠시만 기다려주세요.';
+
+            const startTime = Date.now();
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/gpt/diary-prompt-test`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        summaryJson: summaryJson,
+                        diaryPlanJson: diaryPlanJson
+                    })
+                });
+
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+
+                if (!response.ok) {
+                    throw new Error(`API 오류 (${response.status}): ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                currentResponse = result;
+
+                const diary = result.diary || '일기를 생성할 수 없습니다.';
+
+                // 성공 출력
+                diaryOutput.className = 'output-area diary-output success';
+                diaryOutput.textContent = diary;
+
+                // 프롬프트 표시
+                promptView.textContent = result.fullPrompt || '프롬프트 정보가 없습니다.';
+
+                // 통계 표시
+                showStats(responseTime, result);
+
+                // 히스토리에 추가
+                addToHistory({
+                    timestamp: new Date(),
+                    summaryJson: summaryJson,
+                    diaryPlanJson: diaryPlanJson,
+                    diary: diary,
+                    responseTime: responseTime
+                });
+
+            } catch (error) {
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+
+                diaryOutput.className = 'output-area diary-output error';
+                diaryOutput.textContent = `❌ 오류 발생: ${error.message}\n\n응답 시간: ${responseTime}ms`;
+
+                console.error('일기 생성 테스트 오류:', error);
+            } finally {
+                testBtn.disabled = false;
+            }
+        }
+
+        // 통계 표시
+        function showStats(responseTime, result) {
+            const stats = document.getElementById('stats');
+            const statsContent = document.getElementById('statsContent');
+            
+            const diary = result.diary || '';
+            const diaryLength = diary.length;
+            const paragraphs = diary.split('\n\n').length;
+            const sentences = diary.split(/[.!?]/).filter(s => s.trim().length > 0).length;
+            
+            statsContent.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                    <div><strong>응답 시간:</strong> ${responseTime}ms</div>
+                    <div><strong>일기 길이:</strong> ${diaryLength}자</div>
+                    <div><strong>단락 수:</strong> ${paragraphs}개</div>
+                    <div><strong>문장 수:</strong> ${sentences}개</div>
+                </div>
+            `;
+            
+            stats.style.display = 'block';
+        }
+
+        // 히스토리에 추가
+        function addToHistory(testData) {
+            testHistory.unshift(testData);
+            
+            // 최대 15개까지만 보관
+            if (testHistory.length > 15) {
+                testHistory = testHistory.slice(0, 15);
+            }
+            
+            updateHistoryDisplay();
+        }
+
+        // 히스토리 표시 업데이트
+        function updateHistoryDisplay() {
+            const historyList = document.getElementById('historyList');
+            
+            if (testHistory.length === 0) {
+                historyList.innerHTML = '<p style="color: #666; text-align: center;">아직 테스트 기록이 없습니다.</p>';
+                return;
+            }
+
+            historyList.innerHTML = testHistory.map((item, index) => `
+                <div class="history-item" onclick="loadFromHistory(${index})">
+                    <div><strong>일기 테스트</strong> - ${item.responseTime}ms</div>
+                    <div style="margin: 5px 0; font-size: 13px; color: #666;">
+                        ${item.diary.substring(0, 80)}${item.diary.length > 80 ? '...' : ''}
+                    </div>
+                    <small>${item.timestamp.toLocaleString()}</small>
+                </div>
+            `).join('');
+        }
+
+        // 히스토리에서 로드
+        function loadFromHistory(index) {
+            const item = testHistory[index];
+            if (!item) return;
+
+            document.getElementById('summaryJson').value = item.summaryJson;
+            document.getElementById('diaryPlanJson').value = item.diaryPlanJson;
+
+            // 출력에도 표시
+            const diaryOutput = document.getElementById('diaryOutput');
+            diaryOutput.className = 'output-area diary-output success';
+            diaryOutput.textContent = item.diary;
+            currentResponse = { diary: item.diary };
+
+            showStats(item.responseTime, { diary: item.diary });
+        }
+
+        // 일기 평가
+        function rateDiary(rating) {
+            if (!currentResponse) {
+                alert('평가할 일기가 없습니다.');
+                return;
+            }
+
+            const messages = {
+                excellent: '🌟 훌륭한 일기로 평가했습니다!',
+                good: '👍 좋은 일기로 평가했습니다!',
+                fair: '⚖️ 보통 수준의 일기로 평가했습니다.',
+                poor: '👎 개선이 필요한 일기로 평가했습니다.',
+                save: '💾 일기를 저장했습니다!'
+            };
+
+            // 여기서 실제로는 서버에 평가 데이터를 보낼 수 있음
+            console.log(`일기 평가: ${rating}`, currentResponse);
+            
+            alert(messages[rating]);
+        }
+
+        // 페이지 로드 시 초기화
+        window.onload = function() {
+            console.log('일기 생성 프롬프트 테스트 페이지가 로드되었습니다.');
+            
+            // 기본 프리셋 로드
+            loadPreset('childhood');
+        };
+    </script>
+</body>
+</html>

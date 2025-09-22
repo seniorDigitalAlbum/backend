@@ -161,23 +161,21 @@ public class GPTService {
         promptBuilder.append("- 부정 감정 → 위로와 지지를 담아 따뜻하게 공감한다.\n");
         promptBuilder.append("- 중립 감정 → 관심과 호기심을 담아 자연스럽게 이어간다.\n");
         promptBuilder.append("- ⚠️ 신뢰도가 60% 미만일 경우, 현재 감정을 '중립'으로 간주하고 감정 언급을 피한다.\n\n");
-
-        
         promptBuilder.append("**[감정 정보]**\n");
         promptBuilder.append("사용자의 현재 감정: '").append(emotionKorean).append("' (신뢰도: ").append(confidencePercent).append("%)\n\n");
         
         promptBuilder.append("**[대화 맥락]**\n");
         if (prevUser != null && !prevUser.trim().isEmpty()) {
-            promptBuilder.append("이전 사용자: \"").append(prevUser).append("\"\n");
+            promptBuilder.append("이전 할머니/할아버지: \"").append(prevUser).append("\"\n");
         }
         if (prevSys != null && !prevSys.trim().isEmpty()) {
             promptBuilder.append("이전 가족: \"").append(prevSys).append("\"\n");
         }
-        promptBuilder.append("현재 사용자: \"").append(currUser).append("\"\n\n");
+        promptBuilder.append("현재 할머니/할아버지: \"").append(currUser).append("\"\n\n");
         
         promptBuilder.append("**[응답 지침]**\n");
         promptBuilder.append("사용자와의 따뜻한 대화를 위해 다음을 지켜주세요:\n\n");
-        
+
         promptBuilder.append("1. **대화 동작**: 위의 대화 동작 목록에서 반드시 2개를 선택하여 응답에 포함하세요\n");
         promptBuilder.append("2. **감정별 톤**: 현재 감정에 맞는 톤 규칙을 따라주세요\n");
         promptBuilder.append("3. **사랑스러운 관심**: 사용자의 이야기에 진심으로 관심을 보여주세요\n");
@@ -191,6 +189,7 @@ public class GPTService {
         promptBuilder.append("11. **질문으로 마무리**: 반드시 응답을 질문으로 끝내주세요\n\n");
         
         promptBuilder.append("사용자의 감정과 대화 내용을 고려하여 사랑하는 가족처럼 따뜻하고 애정 어린 응답을 생성해주세요. 반드시 질문으로 마무리해주세요.");
+        
         
         // GPT 요청 생성
         GPTRequest gptRequest = new GPTRequest();

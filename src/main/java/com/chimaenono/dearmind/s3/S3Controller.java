@@ -109,6 +109,12 @@ public class S3Controller {
         return uploadFile(file, "user-photos");
     }
 
+    @PostMapping("/upload/album-photo")
+    @Operation(summary = "앨범 사진 업로드", description = "앨범 사진을 업로드합니다.")
+    public ResponseEntity<Map<String, String>> uploadAlbumPhoto(@RequestParam("file") MultipartFile file) {
+        return uploadFile(file, "album-photos");
+    }
+
     @GetMapping("/download")
     @Operation(summary = "파일 다운로드", description = "S3에서 파일을 다운로드합니다.")
     public ResponseEntity<byte[]> downloadFile(@RequestParam("fileUrl") String fileUrl) {

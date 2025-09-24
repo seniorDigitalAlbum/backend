@@ -70,14 +70,9 @@ public class AlbumPhotoService {
         // 해당 대화의 모든 표지 사진을 false로 변경
         albumPhotoRepository.clearCoverPhotosByConversationId(conversationId);
 
-        // 선택된 사진을 표지로 설정
-        AlbumPhoto photo = albumPhotoRepository.findById(photoId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사진입니다: " + photoId));
-
-        // 대화 ID가 일치하는지 확인
-        if (!photo.getConversation().getId().equals(conversationId)) {
-            throw new IllegalArgumentException("해당 사진은 이 대화에 속하지 않습니다.");
-        }
+        // 선택된 사진을 표지로 설정 (대화 ID로 직접 조회하여 LAZY 로딩 문제 방지)
+        AlbumPhoto photo = albumPhotoRepository.findByIdAndConversationId(photoId, conversationId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 대화에 존재하지 않는 사진입니다: conversationId=" + conversationId + ", photoId=" + photoId));
 
         photo.setIsCover(true);
         albumPhotoRepository.save(photo);

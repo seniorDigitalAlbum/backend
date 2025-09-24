@@ -15,7 +15,7 @@ import java.util.Map;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/conversations")
+@RequestMapping("/api/albums")
 @RequiredArgsConstructor
 @Tag(name = "Album", description = "앨범 관련 API")
 public class AlbumController {
@@ -152,6 +152,34 @@ public class AlbumController {
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             log.error("사진 추가 실패: conversationId={}, error={}", conversationId, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 파일을 직접 업로드하여 새로운 사진을 추가합니다.
+     */
+    @PostMapping("/{conversationId}/photos/upload")
+    @Operation(summary = "사진 파일 업로드 및 추가", description = "파일을 직접 업로드하여 앨범에 사진을 추가합니다.")
+    public ResponseEntity<AlbumPhoto> addPhotoWithUpload(
+            @Parameter(description = "대화 ID", required = true)
+            @PathVariable Long conversationId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "uploadedBy", defaultValue = "가족") String uploadedBy) {
+        
+        try {
+            // 1. S3에 파일 업로드
+            String imageUrl = s3UploadService.uploadImage(file, "album-photos");
+            
+            // 2. 앨범에 사진 추가
+            AlbumPhoto photo = albumPhotoService.addPhoto(conversationId, imageUrl, uploadedBy);
+            
+            return ResponseEntity.ok(photo);
+        } catch (IllegalArgumentException e) {
+            log.error("사진 업로드 및 추가 실패: conversationId={}, error={}", conversationId, e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("사진 업로드 및 추가 실패: conversationId={}, error={}", conversationId, e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }

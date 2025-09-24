@@ -29,6 +29,11 @@ public interface AlbumPhotoRepository extends JpaRepository<AlbumPhoto, Long> {
     Optional<AlbumPhoto> findByConversationIdAndIsCoverTrue(Long conversationId);
 
     /**
+     * 특정 ID와 대화 ID로 사진을 조회합니다.
+     */
+    Optional<AlbumPhoto> findByIdAndConversationId(Long id, Long conversationId);
+
+    /**
      * 특정 대화의 사진 개수를 조회합니다.
      */
     long countByConversationId(Long conversationId);

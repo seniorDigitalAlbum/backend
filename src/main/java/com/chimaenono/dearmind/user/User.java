@@ -29,16 +29,26 @@ public class User {
     @Schema(description = "사용자 이름", example = "홍길동")
     private String name;
     
-    @Column(name = "email", nullable = false, unique = true)
-    @Schema(description = "이메일", example = "user@example.com")
-    private String email;
     
     @Column(name = "phone")
     @Schema(description = "전화번호", example = "010-1234-5678")
     private String phone;
     
+    @Column(name = "kakao_id")
+    @Schema(description = "카카오 사용자 ID", example = "123456789")
+    private String kakaoId;
+    
+    @Column(name = "kakao_access_token", columnDefinition = "TEXT")
+    @Schema(description = "카카오 액세스 토큰")
+    private String kakaoAccessToken;
+    
     @Enumerated(EnumType.STRING)
-    @Column(name = "user_type", nullable = false)
+    @Column(name = "gender")
+    @Schema(description = "성별", example = "MALE")
+    private Gender gender;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_type", nullable = true)
     @Schema(description = "사용자 타입", example = "SENIOR")
     private UserType userType;
     
@@ -68,5 +78,10 @@ public class User {
     public enum UserType {
         SENIOR,    // 시니어 사용자
         GUARDIAN   // 보호자
+    }
+    
+    public enum Gender {
+        MALE,      // 남성
+        FEMALE     // 여성
     }
 }

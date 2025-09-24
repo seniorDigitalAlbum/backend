@@ -149,8 +149,8 @@ public class STTService {
             return false;
         }
         
-        // 한국어 문자, 공백, 기본 구두점만 허용
-        return text.matches("^[가-힣\\s.,!?]*$");
+        // 한국어 문자, 숫자, 공백, 기본 구두점 허용 (일본어, 중국어 제외)
+        return text.matches("^[가-힣0-9\\s.,!?]*$");
     }
 
 } 

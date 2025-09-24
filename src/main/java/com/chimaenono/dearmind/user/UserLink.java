@@ -21,13 +21,13 @@ public class UserLink {
     @Schema(description = "연결 고유 ID", example = "1")
     private Long id;
     
-    @Column(name = "guardian_user_id", nullable = false)
-    @Schema(description = "보호자 사용자 ID", example = "guardian_123")
-    private String guardianUserId;
+    @Column(name = "guardian_id", nullable = false)
+    @Schema(description = "보호자 DB ID", example = "1")
+    private Long guardianId;
     
-    @Column(name = "senior_user_id", nullable = false)
-    @Schema(description = "시니어 사용자 ID", example = "senior_456")
-    private String seniorUserId;
+    @Column(name = "senior_id", nullable = false)
+    @Schema(description = "시니어 DB ID", example = "2")
+    private Long seniorId;
     
     @Column(name = "status", nullable = false)
     @Schema(description = "연결 상태", example = "ACTIVE")

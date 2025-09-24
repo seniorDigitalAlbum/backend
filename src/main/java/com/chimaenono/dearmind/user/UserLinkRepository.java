@@ -8,13 +8,13 @@ import java.util.Optional;
 @Repository
 public interface UserLinkRepository extends JpaRepository<UserLink, Long> {
     
-    Optional<UserLink> findByGuardianUserIdAndSeniorUserId(String guardianUserId, String seniorUserId);
+    List<UserLink> findByGuardianId(Long guardianId);
     
-    List<UserLink> findByGuardianUserId(String guardianUserId);
-    
-    List<UserLink> findBySeniorUserId(String seniorUserId);
+    List<UserLink> findBySeniorId(Long seniorId);
     
     List<UserLink> findByStatus(String status);
     
-    boolean existsByGuardianUserIdAndSeniorUserId(String guardianUserId, String seniorUserId);
+    boolean existsByGuardianIdAndSeniorId(Long guardianId, Long seniorId);
+    
+    Optional<UserLink> findByGuardianIdAndSeniorId(Long guardianId, Long seniorId);
 }

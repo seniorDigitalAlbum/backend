@@ -23,7 +23,6 @@ public class UserController {
         try {
             User user = userService.createUser(
                 request.getName(),
-                request.getEmail(),
                 request.getPhone(),
                 request.getUserType()
             );
@@ -41,13 +40,6 @@ public class UserController {
                   .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/email/{email}")
-    @Operation(summary = "이메일로 사용자 조회", description = "이메일로 사용자를 조회합니다")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
-        Optional<User> user = userService.getUserByEmail(email);
-        return user.map(ResponseEntity::ok)
-                  .orElse(ResponseEntity.notFound().build());
-    }
 
     @GetMapping("/type/{userType}")
     @Operation(summary = "사용자 타입별 조회", description = "사용자 타입별로 사용자 목록을 조회합니다")
@@ -72,12 +64,6 @@ public class UserController {
         }
     }
 
-    @GetMapping("/check-email/{email}")
-    @Operation(summary = "이메일 중복 확인", description = "이메일 중복 여부를 확인합니다")
-    public ResponseEntity<Boolean> checkEmailExists(@PathVariable String email) {
-        boolean exists = userService.isEmailExists(email);
-        return ResponseEntity.ok(exists);
-    }
 
     @GetMapping("/phone/{phone}")
     @Operation(summary = "전화번호로 사용자 조회", description = "전화번호로 사용자를 조회합니다")
@@ -136,15 +122,12 @@ public class UserController {
     // DTO 클래스들
     public static class CreateUserRequest {
         private String name;
-        private String email;
         private String phone;
         private User.UserType userType;
 
         // Getters and Setters
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
         public String getPhone() { return phone; }
         public void setPhone(String phone) { this.phone = phone; }
         public User.UserType getUserType() { return userType; }

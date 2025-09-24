@@ -1,686 +1,2058 @@
 <!DOCTYPE html>
+
 <html lang="ko">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>일기 생성 테스트</title>
+
     <!-- YouTube Player API -->
+
     <script src="https://www.youtube.com/iframe_api"></script>
+
     <style>
+
         body {
+
             font-family: Arial, sans-serif;
+
             max-width: 1200px;
+
             margin: 0 auto;
+
             padding: 20px;
+
             background-color: #f5f5f5;
+
         }
+
         .container {
+
             background: white;
+
             padding: 30px;
+
             border-radius: 10px;
+
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
             margin-bottom: 20px;
+
         }
+
         h1 {
+
             color: #333;
+
             text-align: center;
+
             margin-bottom: 30px;
+
         }
+
         .section {
+
             margin-bottom: 30px;
+
             padding: 20px;
+
             border: 1px solid #ddd;
+
             border-radius: 8px;
+
             background-color: #fafafa;
+
         }
+
         .section h2 {
+
             color: #555;
+
             margin-top: 0;
+
             border-bottom: 2px solid #007bff;
+
             padding-bottom: 10px;
+
         }
+
         input, button {
+
             padding: 10px;
+
             margin: 5px;
+
             border: 1px solid #ddd;
+
             border-radius: 5px;
+
         }
+
         input {
+
             width: 200px;
+
         }
+
         button {
+
             background-color: #007bff;
+
             color: white;
+
             border: none;
+
             cursor: pointer;
+
             padding: 10px 20px;
+
             border-radius: 5px;
+
         }
+
         button:hover {
+
             background-color: #0056b3;
+
         }
+
         button:disabled {
+
             background-color: #ccc;
+
             cursor: not-allowed;
+
         }
+
         .result {
+
             background-color: #f8f9fa;
+
             border: 1px solid #e9ecef;
+
             border-radius: 5px;
+
             padding: 15px;
+
             margin-top: 15px;
+
             white-space: pre-wrap;
+
             font-family: monospace;
+
             max-height: 400px;
+
             overflow-y: auto;
+
         }
+
         .status {
+
             padding: 10px;
+
             border-radius: 5px;
+
             margin: 10px 0;
+
             font-weight: bold;
+
         }
+
         .status.processing {
+
             background-color: #fff3cd;
+
             color: #856404;
+
             border: 1px solid #ffeaa7;
+
         }
+
         .status.completed {
+
             background-color: #d4edda;
+
             color: #155724;
+
             border: 1px solid #c3e6cb;
+
         }
+
         .status.error {
+
             background-color: #f8d7da;
+
             color: #721c24;
+
             border: 1px solid #f5c6cb;
+
         }
+
         .diary-content {
+
             background-color: #e7f3ff;
+
             border: 1px solid #b3d9ff;
+
             border-radius: 8px;
+
             padding: 20px;
+
             margin: 15px 0;
+
             line-height: 1.6;
+
         }
+
         .music-item {
+
             background-color: #f8f9fa;
+
             border: 1px solid #e9ecef;
+
             border-radius: 8px;
+
             padding: 15px;
+
             margin: 10px 0;
+
             transition: all 0.3s ease;
+
             cursor: pointer;
+
         }
+
         .music-item:hover {
+
             background-color: #e9ecef;
+
             transform: translateY(-2px);
+
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+
         }
+
         .music-item.active {
+
             border-left: 4px solid #28a745;
+
             background-color: #e8f5e8;
+
         }
+
         .play-btn {
+
             background-color: #28a745;
+
             color: white;
+
             border: none;
+
             padding: 8px 16px;
+
             border-radius: 5px;
+
             cursor: pointer;
+
             font-size: 14px;
+
             margin-top: 10px;
+
         }
+
         .play-btn:hover {
+
             background-color: #218838;
+
         }
+
         
+
         /* YouTube Player Styles */
+
         .music-player {
+
             position: fixed;
+
             bottom: 0;
+
             left: 0;
+
             right: 0;
+
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
             color: white;
+
             padding: 20px;
+
             box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+
             z-index: 1000;
+
             display: none;
+
         }
+
         .player-content {
+
             max-width: 1200px;
+
             margin: 0 auto;
+
             display: flex;
+
             align-items: center;
+
             gap: 20px;
+
         }
+
         .player-info {
+
             flex: 1;
+
         }
+
         .player-info h3 {
+
             margin: 0 0 5px 0;
+
             font-size: 18px;
+
         }
+
         .player-info p {
+
             margin: 0;
+
             opacity: 0.8;
+
             font-size: 14px;
+
         }
+
         .player-controls {
+
             display: flex;
+
             align-items: center;
+
             gap: 15px;
+
         }
+
         .control-btn {
+
             background: rgba(255,255,255,0.2);
+
             border: none;
+
             color: white;
+
             padding: 10px;
+
             border-radius: 50%;
+
             cursor: pointer;
+
             font-size: 16px;
+
             width: 40px;
+
             height: 40px;
+
             display: flex;
+
             align-items: center;
+
             justify-content: center;
+
             transition: all 0.3s ease;
+
         }
+
         .control-btn:hover {
+
             background: rgba(255,255,255,0.3);
+
             transform: scale(1.1);
+
         }
+
         .control-btn:disabled {
+
             opacity: 0.5;
+
             cursor: not-allowed;
+
         }
+
         .playlist-indicator {
+
             background: rgba(255,255,255,0.2);
+
             padding: 5px 10px;
+
             border-radius: 15px;
+
             font-size: 12px;
+
         }
+
         .close-player {
+
             background: rgba(255,255,255,0.2);
+
             border: none;
+
             color: white;
+
             padding: 8px 12px;
+
             border-radius: 5px;
+
             cursor: pointer;
+
             font-size: 14px;
+
         }
+
         .close-player:hover {
+
             background: rgba(255,255,255,0.3);
+
         }
+
         .summary-content {
+
             background-color: #f0f8f0;
+
             border: 1px solid #c3e6c3;
+
             border-radius: 8px;
+
             padding: 15px;
+
             margin: 15px 0;
+
             line-height: 1.5;
+
         }
+
     </style>
+
 </head>
+
 <body>
+
     <div class="container">
+
         <h1>📖 일기 생성 테스트</h1>
+
         
+
         <!-- 0. 테스트 데이터 생성 -->
+
         <div class="section">
+
             <h2>0️⃣ 테스트 데이터 생성</h2>
+
             <p>일기 테스트를 위한 샘플 대화 데이터를 생성합니다.</p>
+
             <button onclick="createTestData()">테스트 데이터 생성</button>
+
             <div id="testDataResult" class="result" style="display: none;"></div>
+
         </div>
+
         
+
         <!-- 1. 대화 종료 -->
+
         <div class="section">
+
             <h2>1️⃣ 대화 종료</h2>
+
             <p>대화를 종료하고 백그라운드에서 요약 및 일기 생성을 시작합니다.</p>
+
             <input type="number" id="conversationId" placeholder="대화 ID" value="1">
+
             <button onclick="endConversation()">대화 종료</button>
+
             <div id="endResult" class="result" style="display: none;"></div>
+
         </div>
+
         
+
         <!-- 2. 처리 상태 확인 -->
+
         <div class="section">
+
             <h2>2️⃣ 처리 상태 확인</h2>
+
             <p>요약 및 일기 생성 진행 상태를 확인합니다.</p>
+
             <button onclick="checkStatus()">상태 확인</button>
+
             <button onclick="startPolling()">자동 폴링 시작</button>
+
             <button onclick="stopPolling()">폴링 중지</button>
+
             <div id="statusResult" class="result" style="display: none;"></div>
+
             <div id="statusDisplay" class="status" style="display: none;"></div>
+
         </div>
+
         
+
         <!-- 3. 일기 조회 -->
+
         <div class="section">
+
             <h2>3️⃣ 일기 조회</h2>
+
             <p>생성된 일기와 요약 내용을 조회합니다.</p>
+
             <button onclick="getDiary()" id="diaryBtn" disabled>일기 보러 가기</button>
+
             <div id="diaryResult" class="result" style="display: none;"></div>
+
             <div id="diaryContent" style="display: none;"></div>
+
             <div id="musicRecommendations" style="display: none;">
+
                 <h3>🎵 추천 음악</h3>
+
                 <div id="musicList"></div>
+
             </div>
+
         </div>
+
     </div>
+
+
 
     <!-- Hidden YouTube Player -->
+
     <div id="player" style="display: none;"></div>
 
+
+
     <!-- Music Player -->
+
     <div id="musicPlayer" class="music-player">
+
         <div class="player-content">
+
             <div class="player-info">
+
                 <h3 id="playerTitle">음악 제목</h3>
+
                 <p id="playerArtist">아티스트</p>
+
             </div>
+
             <div class="player-controls">
+
                 <button class="control-btn" id="prevBtn" onclick="playPrevious()" title="이전 곡">⏮</button>
+
                 <button class="control-btn" id="playPauseBtn" onclick="togglePlayPause()" title="재생/일시정지">▶</button>
+
                 <button class="control-btn" id="nextBtn" onclick="playNext()" title="다음 곡">⏭</button>
+
                 <div class="playlist-indicator" id="playlistIndicator">1/3</div>
+
             </div>
+
             <button class="close-player" onclick="closePlayer()">닫기</button>
+
         </div>
+
     </div>
 
+
+
     <script>
+
         let pollingInterval = null;
+
         let conversationId = null;
+
         
+
         // YouTube Player 관련 변수
+
         let player = null;
+
         let currentPlaylist = [];
+
         let currentTrackIndex = 0;
+
         let isPlaying = false;
+
         
+
         // YouTube Player API 초기화
+
         function onYouTubeIframeAPIReady() {
+
             console.log('YouTube Player API 준비 완료');
+
         }
+
         
+
         // 0. 테스트 데이터 생성
+
         async function createTestData() {
+
             try {
+
                 const response = await fetch('/api/test/conversation', {
+
                     method: 'POST'
+
                 });
+
                 
+
                 const result = await response.text();
+
                 
+
                 const resultDiv = document.getElementById('testDataResult');
+
                 resultDiv.style.display = 'block';
+
                 resultDiv.className = 'result success';
+
                 resultDiv.textContent = result;
+
                 
+
                 // 생성된 대화 ID 추출 (예: "Conversation ID: 123")
+
                 const match = result.match(/Conversation ID: (\d+)/);
+
                 if (match) {
+
                     const newConversationId = match[1];
+
                     document.getElementById('conversationId').value = newConversationId;
+
                     conversationId = newConversationId;
+
                 }
+
                 
+
             } catch (error) {
+
                 const resultDiv = document.getElementById('testDataResult');
+
                 resultDiv.style.display = 'block';
+
                 resultDiv.className = 'result error';
+
                 resultDiv.textContent = '오류: ' + error.message;
+
             }
+
         }
+
         
+
         // 1. 대화 종료
+
         async function endConversation() {
+
             conversationId = document.getElementById('conversationId').value;
+
             if (!conversationId) {
+
                 alert('대화 ID를 입력해주세요.');
+
                 return;
+
             }
+
             
+
             try {
+
                 const response = await fetch(`/api/conversations/${conversationId}/end`, {
+
                     method: 'PUT'
+
                 });
+
                 
+
                 const data = await response.json();
+
                 
+
                 document.getElementById('endResult').style.display = 'block';
+
                 document.getElementById('endResult').textContent = JSON.stringify(data, null, 2);
+
                 
+
                 if (data.success) {
+
                     // 대화 메시지 표시
+
                     displayMessages(data.messages);
+
                     
+
                     // 폴링 시작
+
                     startPolling();
+
                 }
+
                 
+
             } catch (error) {
+
                 document.getElementById('endResult').style.display = 'block';
+
                 document.getElementById('endResult').textContent = '오류: ' + error.message;
+
             }
+
         }
+
         
+
         // 대화 메시지 표시
+
         function displayMessages(messages) {
+
             const endResult = document.getElementById('endResult');
+
             endResult.innerHTML = '<h3>📝 대화 내용</h3>';
+
             
+
             messages.forEach((message, index) => {
+
                 const messageDiv = document.createElement('div');
+
                 messageDiv.style.marginBottom = '10px';
+
                 messageDiv.style.padding = '10px';
+
                 messageDiv.style.borderRadius = '5px';
+
                 messageDiv.style.backgroundColor = message.senderType === 'USER' ? '#e3f2fd' : '#f3e5f5';
+
                 
+
                 const sender = message.senderType === 'USER' ? '👤 사용자' : '🤖 AI';
+
                 messageDiv.innerHTML = `<strong>${sender}:</strong> ${message.content}`;
+
                 
+
                 endResult.appendChild(messageDiv);
+
             });
+
         }
+
         
+
         // 2. 처리 상태 확인
+
         async function checkStatus() {
+
             if (!conversationId) {
+
                 conversationId = document.getElementById('conversationId').value;
+
             }
+
             
+
             if (!conversationId) {
+
                 alert('대화 ID를 입력해주세요.');
+
                 return;
+
             }
+
             
+
             try {
+
                 const response = await fetch(`/api/conversations/${conversationId}/processing-status`);
+
                 const data = await response.json();
+
                 
+
                 document.getElementById('statusResult').style.display = 'block';
+
                 document.getElementById('statusResult').textContent = JSON.stringify(data, null, 2);
+
                 
+
                 // 상태 표시
+
                 const statusDisplay = document.getElementById('statusDisplay');
+
                 statusDisplay.style.display = 'block';
+
                 statusDisplay.className = 'status';
+
                 
+
                 if (data.status === 'PROCESSING') {
+
                     statusDisplay.classList.add('processing');
+
                     statusDisplay.textContent = '⏳ ' + data.message;
+
                 } else if (data.status === 'COMPLETED') {
+
                     statusDisplay.classList.add('completed');
+
                     statusDisplay.textContent = '✅ ' + data.message;
+
                     
+
                     // 일기 버튼 활성화
+
                     document.getElementById('diaryBtn').disabled = false;
+
                     
+
                     // 폴링 중지
+
                     stopPolling();
+
                 } else if (data.status === 'ERROR') {
+
                     statusDisplay.classList.add('error');
+
                     statusDisplay.textContent = '❌ ' + data.message;
+
                     stopPolling();
+
                 }
+
                 
+
             } catch (error) {
+
                 document.getElementById('statusResult').style.display = 'block';
+
                 document.getElementById('statusResult').textContent = '오류: ' + error.message;
+
             }
+
         }
+
         
+
         // 폴링 시작
+
         function startPolling() {
+
             if (pollingInterval) {
+
                 clearInterval(pollingInterval);
+
             }
+
             
+
             pollingInterval = setInterval(checkStatus, 2000); // 2초마다 확인
+
             console.log('폴링 시작됨');
+
         }
+
         
+
         // 폴링 중지
+
         function stopPolling() {
+
             if (pollingInterval) {
+
                 clearInterval(pollingInterval);
+
                 pollingInterval = null;
+
                 console.log('폴링 중지됨');
+
             }
+
         }
+
         
+
         // 3. 일기 조회
+
         async function getDiary() {
+
             if (!conversationId) {
+
                 conversationId = document.getElementById('conversationId').value;
+
             }
+
             
+
             if (!conversationId) {
+
                 alert('대화 ID를 입력해주세요.');
+
                 return;
+
             }
+
             
+
             try {
+
                 const response = await fetch(`/api/conversations/${conversationId}/diary`);
+
                 const data = await response.json();
+
                 
+
                 document.getElementById('diaryResult').style.display = 'block';
+
                 document.getElementById('diaryResult').textContent = JSON.stringify(data, null, 2);
+
                 
+
                 if (data.success) {
+
                     // 일기 내용 표시
+
                     const diaryContent = document.getElementById('diaryContent');
+
                     diaryContent.style.display = 'block';
+
                     
+
                     let emotionHtml = '';
+
                     if (data.emotionSummary) {
+
                         emotionHtml = `
+
                             <h3>😊 감정 분석 요약</h3>
+
                             <div class="summary-content">
+
                                 <p><strong>주요 감정:</strong> ${data.emotionSummary.dominantEmotion}</p>
+
                                 <p><strong>평균 신뢰도:</strong> ${data.emotionSummary.averageConfidence.toFixed(2)}</p>
+
                                 <p><strong>분석된 메시지 수:</strong> ${data.emotionSummary.analyzedMessageCount}</p>
+
                                 <p><strong>감정 분포:</strong> ${JSON.stringify(data.emotionSummary.emotionCounts)}</p>
+
                             </div>
+
                         `;
+
                     }
+
                     
+
                     diaryContent.innerHTML = `
+
                         <h3>📋 대화 요약</h3>
+
                         <div class="summary-content">${data.summary}</div>
+
                         
+
                         <h3>📖 생성된 일기</h3>
+
                         <div class="diary-content">${data.diary}</div>
+
                         
+
                         ${emotionHtml}
+
                     `;
+
                     
+
                     // 음악 추천 표시
+
                     if (data.musicRecommendations && data.musicRecommendations.length > 0) {
+
                         displayMusicRecommendations(data.musicRecommendations);
+
                         // 플레이리스트 설정
+
                         currentPlaylist = data.musicRecommendations;
+
                     }
+
                 }
+
                 
+
             } catch (error) {
+
                 document.getElementById('diaryResult').style.display = 'block';
+
                 document.getElementById('diaryResult').textContent = '오류: ' + error.message;
+
             }
+
         }
+
         
+
         // 음악 추천 표시
+
         function displayMusicRecommendations(musicList) {
+
             const musicDiv = document.getElementById('musicRecommendations');
+
             const musicListDiv = document.getElementById('musicList');
+
             
+
             musicDiv.style.display = 'block';
+
             
+
             let html = '';
+
             musicList.forEach((music, index) => {
+
                 html += `
+
                     <div class="music-item" onclick="playTrack(${index})">
+
                         <h4>🎵 ${music.title} - ${music.artist}</h4>
+
                         <p><strong>분위기:</strong> ${music.mood}</p>
+
                         <button onclick="event.stopPropagation(); playTrack(${index})" class="play-btn">
+
                             ▶️ 재생하기
+
                         </button>
+
                     </div>
+
                 `;
+
             });
+
             
+
             musicListDiv.innerHTML = html;
+
         }
+
         
+
         // 트랙 재생
+
         function playTrack(index) {
+
             if (!currentPlaylist || currentPlaylist.length === 0) {
+
                 alert('재생할 음악이 없습니다.');
+
                 return;
+
             }
+
             
+
             currentTrackIndex = index;
+
             const track = currentPlaylist[index];
+
             
+
             if (!track.youtubeVideoId) {
+
                 alert('이 음악의 YouTube ID를 찾을 수 없습니다.');
+
                 return;
+
             }
+
             
+
             // 플레이어 표시
+
             showPlayer();
+
             updatePlayerInfo(track, index);
+
             
+
             // YouTube Player 생성 또는 업데이트
+
             if (player) {
+
                 player.loadVideoById(track.youtubeVideoId);
+
             } else {
+
                 createYouTubePlayer(track.youtubeVideoId);
+
             }
+
             
+
             // 활성 트랙 표시
+
             updateActiveTrack(index);
+
         }
+
         
+
         // YouTube Player 생성
+
         function createYouTubePlayer(videoId) {
+
             if (player) {
+
                 player.destroy();
+
             }
+
             
+
             player = new YT.Player('player', {
+
                 height: '0',
+
                 width: '0',
+
                 videoId: videoId,
+
                 playerVars: {
+
                     'autoplay': 1,
+
                     'controls': 0,
+
                     'disablekb': 1,
+
                     'enablejsapi': 1,
+
                     'fs': 0,
+
                     'iv_load_policy': 3,
+
                     'modestbranding': 1,
+
                     'playsinline': 1,
+
                     'rel': 0,
+
                     'showinfo': 0
+
                 },
+
                 events: {
+
                     'onReady': onPlayerReady,
+
                     'onStateChange': onPlayerStateChange
+
                 }
+
             });
+
         }
+
         
+
         // Player 준비 완료
+
         function onPlayerReady(event) {
+
             console.log('YouTube Player 준비 완료');
+
             isPlaying = true;
+
             updatePlayPauseButton();
+
         }
+
         
+
         // Player 상태 변경
+
         function onPlayerStateChange(event) {
+
             if (event.data === YT.PlayerState.PLAYING) {
+
                 isPlaying = true;
+
             } else if (event.data === YT.PlayerState.PAUSED) {
+
                 isPlaying = false;
+
             } else if (event.data === YT.PlayerState.ENDED) {
+
                 isPlaying = false;
+
                 // 자동으로 다음 곡 재생
+
                 playNext();
+
             }
+
             updatePlayPauseButton();
+
         }
+
         
+
         // 플레이어 표시
+
         function showPlayer() {
+
             document.getElementById('musicPlayer').style.display = 'block';
+
             document.body.style.paddingBottom = '120px'; // 플레이어 공간 확보
+
         }
+
         
+
         // 플레이어 숨기기
+
         function closePlayer() {
+
             document.getElementById('musicPlayer').style.display = 'none';
+
             document.body.style.paddingBottom = '0';
+
             if (player) {
+
                 player.pauseVideo();
+
             }
+
         }
+
         
+
         // 플레이어 정보 업데이트
+
         function updatePlayerInfo(track, index) {
+
             document.getElementById('playerTitle').textContent = track.title;
+
             document.getElementById('playerArtist').textContent = track.artist;
+
             document.getElementById('playlistIndicator').textContent = `${index + 1}/${currentPlaylist.length}`;
+
         }
+
         
+
         // 재생/일시정지 토글
+
         function togglePlayPause() {
+
             if (!player) return;
+
             
+
             if (isPlaying) {
+
                 player.pauseVideo();
+
             } else {
+
                 player.playVideo();
+
             }
+
         }
+
         
+
         // 이전 곡
+
         function playPrevious() {
+
             if (currentTrackIndex > 0) {
+
                 playTrack(currentTrackIndex - 1);
+
             }
+
         }
+
         
+
         // 다음 곡
+
         function playNext() {
+
             if (currentTrackIndex < currentPlaylist.length - 1) {
+
                 playTrack(currentTrackIndex + 1);
+
             }
+
         }
+
         
+
         // 재생/일시정지 버튼 업데이트
+
         function updatePlayPauseButton() {
+
             const btn = document.getElementById('playPauseBtn');
+
             btn.textContent = isPlaying ? '⏸' : '▶';
+
         }
+
         
+
         // 활성 트랙 표시
+
         function updateActiveTrack(index) {
+
             const musicItems = document.querySelectorAll('.music-item');
+
             musicItems.forEach((item, i) => {
+
                 if (i === index) {
+
                     item.classList.add('active');
+
                 } else {
+
                     item.classList.remove('active');
+
                 }
+
             });
+
         }
+
         
+
         // 페이지 언로드 시 폴링 중지
+
         window.addEventListener('beforeunload', stopPolling);
+
     </script>
+
 </body>
+
 </html>
+
+
+            try {
+
+                const response = await fetch(`/api/conversations/${conversationId}/end`, {
+
+                    method: 'PUT'
+
+                });
+
+                
+
+                const data = await response.json();
+
+                
+
+                document.getElementById('endResult').style.display = 'block';
+
+                document.getElementById('endResult').textContent = JSON.stringify(data, null, 2);
+
+                
+
+                if (data.success) {
+
+                    // 대화 메시지 표시
+
+                    displayMessages(data.messages);
+
+                    
+
+                    // 폴링 시작
+
+                    startPolling();
+
+                }
+
+                
+
+            } catch (error) {
+
+                document.getElementById('endResult').style.display = 'block';
+
+                document.getElementById('endResult').textContent = '오류: ' + error.message;
+
+            }
+
+        }
+
+        
+
+        // 대화 메시지 표시
+
+        function displayMessages(messages) {
+
+            const endResult = document.getElementById('endResult');
+
+            endResult.innerHTML = '<h3>📝 대화 내용</h3>';
+
+            
+
+            messages.forEach((message, index) => {
+
+                const messageDiv = document.createElement('div');
+
+                messageDiv.style.marginBottom = '10px';
+
+                messageDiv.style.padding = '10px';
+
+                messageDiv.style.borderRadius = '5px';
+
+                messageDiv.style.backgroundColor = message.senderType === 'USER' ? '#e3f2fd' : '#f3e5f5';
+
+                
+
+                const sender = message.senderType === 'USER' ? '👤 사용자' : '🤖 AI';
+
+                messageDiv.innerHTML = `<strong>${sender}:</strong> ${message.content}`;
+
+                
+
+                endResult.appendChild(messageDiv);
+
+            });
+
+        }
+
+        
+
+        // 2. 처리 상태 확인
+
+        async function checkStatus() {
+
+            if (!conversationId) {
+
+                conversationId = document.getElementById('conversationId').value;
+
+            }
+
+            
+
+            if (!conversationId) {
+
+                alert('대화 ID를 입력해주세요.');
+
+                return;
+
+            }
+
+            
+
+            try {
+
+                const response = await fetch(`/api/conversations/${conversationId}/processing-status`);
+
+                const data = await response.json();
+
+                
+
+                document.getElementById('statusResult').style.display = 'block';
+
+                document.getElementById('statusResult').textContent = JSON.stringify(data, null, 2);
+
+                
+
+                // 상태 표시
+
+                const statusDisplay = document.getElementById('statusDisplay');
+
+                statusDisplay.style.display = 'block';
+
+                statusDisplay.className = 'status';
+
+                
+
+                if (data.status === 'PROCESSING') {
+
+                    statusDisplay.classList.add('processing');
+
+                    statusDisplay.textContent = '⏳ ' + data.message;
+
+                } else if (data.status === 'COMPLETED') {
+
+                    statusDisplay.classList.add('completed');
+
+                    statusDisplay.textContent = '✅ ' + data.message;
+
+                    
+
+                    // 일기 버튼 활성화
+
+                    document.getElementById('diaryBtn').disabled = false;
+
+                    
+
+                    // 폴링 중지
+
+                    stopPolling();
+
+                } else if (data.status === 'ERROR') {
+
+                    statusDisplay.classList.add('error');
+
+                    statusDisplay.textContent = '❌ ' + data.message;
+
+                    stopPolling();
+
+                }
+
+                
+
+            } catch (error) {
+
+                document.getElementById('statusResult').style.display = 'block';
+
+                document.getElementById('statusResult').textContent = '오류: ' + error.message;
+
+            }
+
+        }
+
+        
+
+        // 폴링 시작
+
+        function startPolling() {
+
+            if (pollingInterval) {
+
+                clearInterval(pollingInterval);
+
+            }
+
+            
+
+            pollingInterval = setInterval(checkStatus, 2000); // 2초마다 확인
+
+            console.log('폴링 시작됨');
+
+        }
+
+        
+
+        // 폴링 중지
+
+        function stopPolling() {
+
+            if (pollingInterval) {
+
+                clearInterval(pollingInterval);
+
+                pollingInterval = null;
+
+                console.log('폴링 중지됨');
+
+            }
+
+        }
+
+        
+
+        // 3. 일기 조회
+
+        async function getDiary() {
+
+            if (!conversationId) {
+
+                conversationId = document.getElementById('conversationId').value;
+
+            }
+
+            
+
+            if (!conversationId) {
+
+                alert('대화 ID를 입력해주세요.');
+
+                return;
+
+            }
+
+            
+
+            try {
+
+                const response = await fetch(`/api/conversations/${conversationId}/diary`);
+
+                const data = await response.json();
+
+                
+
+                document.getElementById('diaryResult').style.display = 'block';
+
+                document.getElementById('diaryResult').textContent = JSON.stringify(data, null, 2);
+
+                
+
+                if (data.success) {
+
+                    // 일기 내용 표시
+
+                    const diaryContent = document.getElementById('diaryContent');
+
+                    diaryContent.style.display = 'block';
+
+                    
+
+                    let emotionHtml = '';
+
+                    if (data.emotionSummary) {
+
+                        emotionHtml = `
+
+                            <h3>😊 감정 분석 요약</h3>
+
+                            <div class="summary-content">
+
+                                <p><strong>주요 감정:</strong> ${data.emotionSummary.dominantEmotion}</p>
+
+                                <p><strong>평균 신뢰도:</strong> ${data.emotionSummary.averageConfidence.toFixed(2)}</p>
+
+                                <p><strong>분석된 메시지 수:</strong> ${data.emotionSummary.analyzedMessageCount}</p>
+
+                                <p><strong>감정 분포:</strong> ${JSON.stringify(data.emotionSummary.emotionCounts)}</p>
+
+                            </div>
+
+                        `;
+
+                    }
+
+                    
+
+                    diaryContent.innerHTML = `
+
+                        <h3>📋 대화 요약</h3>
+
+                        <div class="summary-content">${data.summary}</div>
+
+                        
+
+                        <h3>📖 생성된 일기</h3>
+
+                        <div class="diary-content">${data.diary}</div>
+
+                        
+
+                        ${emotionHtml}
+
+                    `;
+
+                    
+
+                    // 음악 추천 표시
+
+                    if (data.musicRecommendations && data.musicRecommendations.length > 0) {
+
+                        displayMusicRecommendations(data.musicRecommendations);
+
+                        // 플레이리스트 설정
+
+                        currentPlaylist = data.musicRecommendations;
+
+                    }
+
+                }
+
+                
+
+            } catch (error) {
+
+                document.getElementById('diaryResult').style.display = 'block';
+
+                document.getElementById('diaryResult').textContent = '오류: ' + error.message;
+
+            }
+
+        }
+
+        
+
+        // 음악 추천 표시
+
+        function displayMusicRecommendations(musicList) {
+
+            const musicDiv = document.getElementById('musicRecommendations');
+
+            const musicListDiv = document.getElementById('musicList');
+
+            
+
+            musicDiv.style.display = 'block';
+
+            
+
+            let html = '';
+
+            musicList.forEach((music, index) => {
+
+                html += `
+
+                    <div class="music-item" onclick="playTrack(${index})">
+
+                        <h4>🎵 ${music.title} - ${music.artist}</h4>
+
+                        <p><strong>분위기:</strong> ${music.mood}</p>
+
+                        <button onclick="event.stopPropagation(); playTrack(${index})" class="play-btn">
+
+                            ▶️ 재생하기
+
+                        </button>
+
+                    </div>
+
+                `;
+
+            });
+
+            
+
+            musicListDiv.innerHTML = html;
+
+        }
+
+        
+
+        // 트랙 재생
+
+        function playTrack(index) {
+
+            if (!currentPlaylist || currentPlaylist.length === 0) {
+
+                alert('재생할 음악이 없습니다.');
+
+                return;
+
+            }
+
+            
+
+            currentTrackIndex = index;
+
+            const track = currentPlaylist[index];
+
+            
+
+            if (!track.youtubeVideoId) {
+
+                alert('이 음악의 YouTube ID를 찾을 수 없습니다.');
+
+                return;
+
+            }
+
+            
+
+            // 플레이어 표시
+
+            showPlayer();
+
+            updatePlayerInfo(track, index);
+
+            
+
+            // YouTube Player 생성 또는 업데이트
+
+            if (player) {
+
+                player.loadVideoById(track.youtubeVideoId);
+
+            } else {
+
+                createYouTubePlayer(track.youtubeVideoId);
+
+            }
+
+            
+
+            // 활성 트랙 표시
+
+            updateActiveTrack(index);
+
+        }
+
+        
+
+        // YouTube Player 생성
+
+        function createYouTubePlayer(videoId) {
+
+            if (player) {
+
+                player.destroy();
+
+            }
+
+            
+
+            player = new YT.Player('player', {
+
+                height: '0',
+
+                width: '0',
+
+                videoId: videoId,
+
+                playerVars: {
+
+                    'autoplay': 1,
+
+                    'controls': 0,
+
+                    'disablekb': 1,
+
+                    'enablejsapi': 1,
+
+                    'fs': 0,
+
+                    'iv_load_policy': 3,
+
+                    'modestbranding': 1,
+
+                    'playsinline': 1,
+
+                    'rel': 0,
+
+                    'showinfo': 0
+
+                },
+
+                events: {
+
+                    'onReady': onPlayerReady,
+
+                    'onStateChange': onPlayerStateChange
+
+                }
+
+            });
+
+        }
+
+        
+
+        // Player 준비 완료
+
+        function onPlayerReady(event) {
+
+            console.log('YouTube Player 준비 완료');
+
+            isPlaying = true;
+
+            updatePlayPauseButton();
+
+        }
+
+        
+
+        // Player 상태 변경
+
+        function onPlayerStateChange(event) {
+
+            if (event.data === YT.PlayerState.PLAYING) {
+
+                isPlaying = true;
+
+            } else if (event.data === YT.PlayerState.PAUSED) {
+
+                isPlaying = false;
+
+            } else if (event.data === YT.PlayerState.ENDED) {
+
+                isPlaying = false;
+
+                // 자동으로 다음 곡 재생
+
+                playNext();
+
+            }
+
+            updatePlayPauseButton();
+
+        }
+
+        
+
+        // 플레이어 표시
+
+        function showPlayer() {
+
+            document.getElementById('musicPlayer').style.display = 'block';
+
+            document.body.style.paddingBottom = '120px'; // 플레이어 공간 확보
+
+        }
+
+        
+
+        // 플레이어 숨기기
+
+        function closePlayer() {
+
+            document.getElementById('musicPlayer').style.display = 'none';
+
+            document.body.style.paddingBottom = '0';
+
+            if (player) {
+
+                player.pauseVideo();
+
+            }
+
+        }
+
+        
+
+        // 플레이어 정보 업데이트
+
+        function updatePlayerInfo(track, index) {
+
+            document.getElementById('playerTitle').textContent = track.title;
+
+            document.getElementById('playerArtist').textContent = track.artist;
+
+            document.getElementById('playlistIndicator').textContent = `${index + 1}/${currentPlaylist.length}`;
+
+        }
+
+        
+
+        // 재생/일시정지 토글
+
+        function togglePlayPause() {
+
+            if (!player) return;
+
+            
+
+            if (isPlaying) {
+
+                player.pauseVideo();
+
+            } else {
+
+                player.playVideo();
+
+            }
+
+        }
+
+        
+
+        // 이전 곡
+
+        function playPrevious() {
+
+            if (currentTrackIndex > 0) {
+
+                playTrack(currentTrackIndex - 1);
+
+            }
+
+        }
+
+        
+
+        // 다음 곡
+
+        function playNext() {
+
+            if (currentTrackIndex < currentPlaylist.length - 1) {
+
+                playTrack(currentTrackIndex + 1);
+
+            }
+
+        }
+
+        
+
+        // 재생/일시정지 버튼 업데이트
+
+        function updatePlayPauseButton() {
+
+            const btn = document.getElementById('playPauseBtn');
+
+            btn.textContent = isPlaying ? '⏸' : '▶';
+
+        }
+
+        
+
+        // 활성 트랙 표시
+
+        function updateActiveTrack(index) {
+
+            const musicItems = document.querySelectorAll('.music-item');
+
+            musicItems.forEach((item, i) => {
+
+                if (i === index) {
+
+                    item.classList.add('active');
+
+                } else {
+
+                    item.classList.remove('active');
+
+                }
+
+            });
+
+        }
+
+        
+
+        // 페이지 언로드 시 폴링 중지
+
+        window.addEventListener('beforeunload', stopPolling);
+
+    </script>
+
+</body>
+
+</html>
+
+

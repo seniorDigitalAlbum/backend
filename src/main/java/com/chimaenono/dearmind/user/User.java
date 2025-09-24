@@ -46,6 +46,19 @@ public class User {
     @Schema(description = "프로필 이미지 URL")
     private String profileImage;
     
+    @Column(name = "kakao_id")
+    @Schema(description = "카카오 ID")
+    private String kakaoId;
+    
+    @Column(name = "kakao_access_token")
+    @Schema(description = "카카오 액세스 토큰")
+    private String kakaoAccessToken;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gender")
+    @Schema(description = "성별", example = "MALE")
+    private Gender gender;
+    
     @Column(name = "created_at", nullable = false)
     @Schema(description = "계정 생성 시간")
     private LocalDateTime createdAt;
@@ -68,5 +81,35 @@ public class User {
     public enum UserType {
         SENIOR,    // 시니어 사용자
         GUARDIAN   // 보호자
+    }
+    
+    public enum Gender {
+        MALE,       // 남성
+        FEMALE      // 여성
+    }
+    
+    // 카카오 관련 getter 메서드들
+    public String getKakaoId() {
+        return kakaoId;
+    }
+    
+    public String getKakaoAccessToken() {
+        return kakaoAccessToken;
+    }
+    
+    public void setKakaoId(String kakaoId) {
+        this.kakaoId = kakaoId;
+    }
+    
+    public void setKakaoAccessToken(String kakaoAccessToken) {
+        this.kakaoAccessToken = kakaoAccessToken;
+    }
+    
+    public Gender getGender() {
+        return gender;
+    }
+    
+    public void setGender(Gender gender) {
+        this.gender = gender;
     }
 }

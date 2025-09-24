@@ -43,7 +43,6 @@ public class KakaoAuthService {
     private static final String KAKAO_AUTH_URL = "https://kauth.kakao.com/oauth/authorize";
     private static final String KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token";
     private static final String KAKAO_USER_INFO_URL = "https://kapi.kakao.com/v2/user/me";
-    private static final String KAKAO_LOGOUT_URL = "https://kapi.kakao.com/v1/user/logout";
 
     public String getKakaoAuthUrl(String platform, String ip, String scope) {
         String clientId;

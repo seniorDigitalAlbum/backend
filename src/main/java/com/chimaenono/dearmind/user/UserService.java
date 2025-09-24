@@ -49,10 +49,11 @@ public class UserService {
     }
 
     @Operation(summary = "사용자 생성")
-    public User createUser(String name, String phone, User.UserType userType) {
+    public User createUser(String name, String email, String phone, User.UserType userType) {
         User user = new User();
         user.setUserId(UUID.randomUUID().toString());
         user.setName(name);
+        user.setEmail(email);
         user.setPhone(phone);
         user.setUserType(userType);
         return userRepository.save(user);
@@ -61,6 +62,16 @@ public class UserService {
     @Operation(summary = "카카오 ID로 사용자 조회")
     public Optional<User> getUserByKakaoId(String kakaoId) {
         return userRepository.findByKakaoId(kakaoId);
+    }
+    
+    @Operation(summary = "이메일로 사용자 조회")
+    public Optional<User> getUserByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+    
+    @Operation(summary = "이메일 존재 여부 확인")
+    public boolean isEmailExists(String email) {
+        return userRepository.existsByEmail(email);
     }
 
     @Operation(summary = "사용자 ID로 조회")

@@ -7,7 +7,6 @@ import com.chimaenono.dearmind.kakao.service.KakaoAuthService;
 import com.chimaenono.dearmind.kakao.service.JwtService;
 import com.chimaenono.dearmind.user.User;
 import com.chimaenono.dearmind.user.UserService;
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +26,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/login")
 @RequiredArgsConstructor
 @Tag(name = "카카오 로그인", description = "카카오 로그인 관련 API")
-public class KaKaoLoginPageController {
+public class KakaoLoginPageController {
 
     private final KakaoAuthService kakaoAuthService;
     private final JwtService jwtService;

@@ -15,22 +15,26 @@ public interface AlbumCommentRepository extends JpaRepository<AlbumComment, Long
     /**
      * 특정 대화의 댓글 목록을 생성일 내림차순으로 조회합니다.
      */
-    List<AlbumComment> findByConversationIdOrderByCreatedAtDesc(Long conversationId);
+    @Query("SELECT ac FROM AlbumComment ac WHERE ac.conversation.id = :conversationId ORDER BY ac.createdAt DESC")
+    List<AlbumComment> findByConversationIdOrderByCreatedAtDesc(@Param("conversationId") Long conversationId);
 
     /**
      * 특정 대화의 댓글 목록을 페이지네이션으로 조회합니다.
      */
-    Page<AlbumComment> findByConversationIdOrderByCreatedAtDesc(Long conversationId, Pageable pageable);
+    @Query("SELECT ac FROM AlbumComment ac WHERE ac.conversation.id = :conversationId ORDER BY ac.createdAt DESC")
+    Page<AlbumComment> findByConversationIdOrderByCreatedAtDesc(@Param("conversationId") Long conversationId, Pageable pageable);
 
     /**
      * 특정 대화의 댓글 개수를 조회합니다.
      */
-    long countByConversationId(Long conversationId);
+    @Query("SELECT COUNT(ac) FROM AlbumComment ac WHERE ac.conversation.id = :conversationId")
+    long countByConversationId(@Param("conversationId") Long conversationId);
 
     /**
      * 특정 대화의 댓글을 모두 삭제합니다.
      */
-    void deleteByConversationId(Long conversationId);
+    @Query("DELETE FROM AlbumComment ac WHERE ac.conversation.id = :conversationId")
+    void deleteByConversationId(@Param("conversationId") Long conversationId);
 
     /**
      * 특정 사용자가 작성한 댓글 목록을 조회합니다.

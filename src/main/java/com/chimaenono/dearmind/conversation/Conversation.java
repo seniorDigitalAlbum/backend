@@ -68,6 +68,10 @@ public class Conversation {
     @Schema(description = "대화 감정 흐름 JSON", example = "{\"segments\":[...], \"metrics\":{...}}")
     private String emotionFlow;                 // segments + metrics 전체 JSON
     
+    @Column(name = "is_public", nullable = false)
+    @Schema(description = "앨범 공개 여부", example = "false")
+    private Boolean isPublic = false;           // 기본값은 비공개
+    
     public enum ConversationStatus {
         ACTIVE, COMPLETED, PAUSED
     }

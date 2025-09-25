@@ -22,8 +22,22 @@ public class AlbumCommentService {
      * 특정 대화의 댓글 목록을 조회합니다.
      */
     public List<AlbumComment> getCommentsByConversationId(Long conversationId) {
-        log.info("대화 ID {}의 댓글 목록 조회", conversationId);
-        return albumCommentRepository.findByConversationIdOrderByCreatedAtDesc(conversationId);
+        try {
+            log.info("🔍 대화 ID {}의 댓글 목록 조회 시작", conversationId);
+            
+            // 대화 존재 여부 확인
+            if (!conversationRepository.existsById(conversationId)) {
+                log.error("존재하지 않는 대화 ID: {}", conversationId);
+                throw new IllegalArgumentException("존재하지 않는 대화입니다: " + conversationId);
+            }
+            
+            List<AlbumComment> comments = albumCommentRepository.findByConversationIdOrderByCreatedAtDesc(conversationId);
+            log.info("✅ 대화 ID {}의 댓글 {}개 조회 완료", conversationId, comments.size());
+            return comments;
+        } catch (Exception e) {
+            log.error("❌ 댓글 목록 조회 중 예외 발생: conversationId={}, error={}", conversationId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**

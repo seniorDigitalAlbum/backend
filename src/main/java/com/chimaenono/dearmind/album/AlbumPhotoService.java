@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.*;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -18,13 +20,28 @@ public class AlbumPhotoService {
 
     private final AlbumPhotoRepository albumPhotoRepository;
     private final ConversationRepository conversationRepository;
+    private final AlbumCommentRepository albumCommentRepository;
 
     /**
      * 특정 대화의 사진 목록을 조회합니다.
      */
     public List<AlbumPhoto> getPhotosByConversationId(Long conversationId) {
-        log.info("대화 ID {}의 사진 목록 조회", conversationId);
-        return albumPhotoRepository.findByConversationIdOrderByCreatedAtDesc(conversationId);
+        try {
+            log.info("대화 ID {}의 사진 목록 조회 시작", conversationId);
+            
+            // 대화 존재 여부 확인
+            if (!conversationRepository.existsById(conversationId)) {
+                log.error("존재하지 않는 대화 ID: {}", conversationId);
+                throw new IllegalArgumentException("존재하지 않는 대화입니다: " + conversationId);
+            }
+            
+            List<AlbumPhoto> photos = albumPhotoRepository.findByConversationIdOrderByCreatedAtDesc(conversationId);
+            log.info("대화 ID {}의 사진 {}개 조회 완료", conversationId, photos.size());
+            return photos;
+        } catch (Exception e) {
+            log.error("사진 목록 조회 중 예외 발생: conversationId={}, error={}", conversationId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**
@@ -124,5 +141,48 @@ public class AlbumPhotoService {
     public List<AlbumPhoto> getNonCoverPhotosByConversationId(Long conversationId) {
         log.info("대화 ID {}의 표지가 아닌 사진 목록 조회", conversationId);
         return albumPhotoRepository.findByConversationIdAndIsCoverFalseOrderByCreatedAtDesc(conversationId);
+    }
+
+    /**
+     * 시니어의 최신 표지 사진을 조회합니다.
+     */
+    public AlbumPhoto getSeniorCoverPhoto(String seniorUserId) {
+        log.info("🔍 시니어 표지 사진 조회: seniorUserId={}", seniorUserId);
+        
+        try {
+            // 시니어의 대화 중에서 표지 사진을 조회
+            List<AlbumPhoto> coverPhotos = albumPhotoRepository.findBySeniorUserIdAndIsCoverTrue(seniorUserId);
+            
+            if (coverPhotos.isEmpty()) {
+                log.info("🔍 시니어 표지 사진 없음: seniorUserId={}", seniorUserId);
+                return null;
+            }
+            
+            // 가장 최근 표지 사진 반환
+            AlbumPhoto latestCoverPhoto = coverPhotos.get(0);
+            log.info("✅ 시니어 표지 사진 조회 성공: seniorUserId={}, imageUrl={}", seniorUserId, latestCoverPhoto.getImageUrl());
+            return latestCoverPhoto;
+        } catch (Exception e) {
+            log.error("❌ 시니어 표지 사진 조회 실패: seniorUserId={}, error={}", seniorUserId, e.getMessage(), e);
+            return null;
+        }
+    }
+
+
+
+    /**
+     * 앨범의 공개 상태를 업데이트합니다.
+     */
+    @Transactional
+    public void updateAlbumVisibility(Long conversationId, Boolean isPublic) {
+        log.info("🔍 앨범 공개 상태 업데이트: conversationId={}, isPublic={}", conversationId, isPublic);
+        
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대화입니다: " + conversationId));
+        
+        conversation.setIsPublic(isPublic);
+        conversationRepository.save(conversation);
+        
+        log.info("✅ 앨범 공개 상태 업데이트 완료: conversationId={}, isPublic={}", conversationId, isPublic);
     }
 }

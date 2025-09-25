@@ -36,11 +36,17 @@ public class AlbumController {
             @PathVariable Long conversationId) {
         
         try {
+            log.info("🔍 댓글 목록 조회 요청 시작: conversationId={}", conversationId);
             List<AlbumComment> comments = albumCommentService.getCommentsByConversationId(conversationId);
+            log.info("✅ 댓글 목록 조회 성공: conversationId={}, 댓글 수={}", conversationId, comments.size());
             return ResponseEntity.ok(comments);
-        } catch (Exception e) {
-            log.error("댓글 목록 조회 실패: conversationId={}, error={}", conversationId, e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("❌ 댓글 목록 조회 실패 - 잘못된 요청: conversationId={}, error={}", conversationId, e.getMessage());
             return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("❌ 댓글 목록 조회 실패 - 서버 오류: conversationId={}, error={}", conversationId, e.getMessage(), e);
+            e.printStackTrace(); // 스택 트레이스 출력
+            return ResponseEntity.internalServerError().build();
         }
     }
 
@@ -103,11 +109,17 @@ public class AlbumController {
             @PathVariable Long conversationId) {
         
         try {
+            log.info("🔍 사진 목록 조회 요청 시작: conversationId={}", conversationId);
             List<AlbumPhoto> photos = albumPhotoService.getPhotosByConversationId(conversationId);
+            log.info("✅ 사진 목록 조회 성공: conversationId={}, 사진 수={}", conversationId, photos.size());
             return ResponseEntity.ok(photos);
-        } catch (Exception e) {
-            log.error("사진 목록 조회 실패: conversationId={}, error={}", conversationId, e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("❌ 사진 목록 조회 실패 - 잘못된 요청: conversationId={}, error={}", conversationId, e.getMessage());
             return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("❌ 사진 목록 조회 실패 - 서버 오류: conversationId={}, error={}", conversationId, e.getMessage(), e);
+            e.printStackTrace(); // 스택 트레이스 출력
+            return ResponseEntity.internalServerError().build();
         }
     }
 
@@ -229,6 +241,74 @@ public class AlbumController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    // ========== 앨범 공개 상태 관리 API ==========
+
+    /**
+     * 앨범 공개 상태를 업데이트합니다.
+     */
+    @PutMapping("/{conversationId}/visibility")
+    @Operation(summary = "앨범 공개 상태 업데이트", description = "앨범의 공개/비공개 상태를 업데이트합니다.")
+    public ResponseEntity<Map<String, Object>> updateAlbumVisibility(
+            @Parameter(description = "대화 ID", required = true)
+            @PathVariable Long conversationId,
+            @RequestBody Map<String, Boolean> request) {
+        
+        try {
+            log.info("🔍 앨범 공개 상태 업데이트 요청: conversationId={}, isPublic={}", conversationId, request.get("isPublic"));
+            
+            Boolean isPublic = request.get("isPublic");
+            if (isPublic == null) {
+                log.error("❌ 앨범 공개 상태 업데이트 실패 - isPublic 파라미터 누락");
+                return ResponseEntity.badRequest().build();
+            }
+            
+            // 실제 데이터베이스 업데이트
+            albumPhotoService.updateAlbumVisibility(conversationId, isPublic);
+            log.info("✅ 앨범 공개 상태 업데이트 완료: conversationId={}, isPublic={}", conversationId, isPublic);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("isPublic", isPublic);
+            response.put("message", isPublic ? "앨범이 가족에게 공개되었습니다." : "앨범이 가족에게 비공개로 설정되었습니다.");
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("❌ 앨범 공개 상태 업데이트 실패: conversationId={}, error={}", conversationId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/senior/{seniorUserId}/cover-photo")
+    @Operation(summary = "시니어 표지 사진 조회", description = "시니어의 최신 표지 사진을 조회합니다.")
+    public ResponseEntity<Map<String, Object>> getSeniorCoverPhoto(
+            @Parameter(description = "시니어 사용자 ID", required = true)
+            @PathVariable String seniorUserId) {
+        
+        try {
+            log.info("🔍 시니어 표지 사진 조회 요청: seniorUserId={}", seniorUserId);
+            
+            // 시니어의 최신 표지 사진 조회
+            AlbumPhoto coverPhoto = albumPhotoService.getSeniorCoverPhoto(seniorUserId);
+            
+            if (coverPhoto == null) {
+                log.info("🔍 시니어 표지 사진 없음: seniorUserId={}", seniorUserId);
+                return ResponseEntity.notFound().build();
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("imageUrl", coverPhoto.getImageUrl());
+            response.put("conversationId", coverPhoto.getConversationId());
+            response.put("createdAt", coverPhoto.getCreatedAt());
+            
+            log.info("✅ 시니어 표지 사진 조회 성공: seniorUserId={}, imageUrl={}", seniorUserId, coverPhoto.getImageUrl());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("❌ 시니어 표지 사진 조회 실패: seniorUserId={}, error={}", seniorUserId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
 
     // ========== S3 이미지 업로드 API ==========
 

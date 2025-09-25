@@ -1,6 +1,7 @@
 package com.chimaenono.dearmind.album;
 
 import com.chimaenono.dearmind.conversation.Conversation;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,6 +26,7 @@ public class AlbumPhoto {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "conversation_id", nullable = false)
+    @JsonIgnore
     private Conversation conversation;
 
     @Column(name = "image_url", nullable = false, length = 500)
@@ -36,6 +38,12 @@ public class AlbumPhoto {
 
     @Column(name = "uploaded_by", nullable = false, length = 50)
     private String uploadedBy;
+
+    // JSON 응답용 conversationId 필드
+    @Transient
+    public Long getConversationId() {
+        return conversation != null ? conversation.getId() : null;
+    }
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

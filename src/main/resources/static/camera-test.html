@@ -171,25 +171,132 @@
         // 카메라 시작
         async function startCamera() {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: true, 
-                    audio: false 
-                });
+                // 카메라 접근 전 상태 확인
+                console.log('카메라 접근 시도 중...');
+                
+                // 미디어 디바이스 지원 확인
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('이 브라우저는 카메라 접근을 지원하지 않습니다.');
+                }
+                
+                // 권한 상태 확인 (가능한 경우)
+                if (navigator.permissions) {
+                    try {
+                        const permissionStatus = await navigator.permissions.query({ name: 'camera' });
+                        console.log('카메라 권한 상태:', permissionStatus.state);
+                        if (permissionStatus.state === 'denied') {
+                            throw new Error('카메라 권한이 거부되었습니다. 브라우저 설정에서 권한을 허용해주세요.');
+                        }
+                    } catch (permError) {
+                        console.log('권한 상태 확인 실패 (일부 브라우저에서 지원하지 않음):', permError);
+                    }
+                }
+                
+                // 사용 가능한 카메라 확인
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                console.log('사용 가능한 카메라:', videoDevices);
+                
+                if (videoDevices.length === 0) {
+                    throw new Error('사용 가능한 카메라가 없습니다.');
+                }
+                
+                // 카메라 접근 요청
+                console.log('getUserMedia 호출 시작...');
+                
+                // 먼저 간단한 설정으로 시도
+                try {
+                    console.log('간단한 설정으로 getUserMedia 시도 중...');
+                    
+                    // 타임아웃 추가 (10초)
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('getUserMedia 타임아웃 (10초)')), 10000);
+                    });
+                    
+                    const getUserMediaPromise = navigator.mediaDevices.getUserMedia({ 
+                        video: true, 
+                        audio: false 
+                    });
+                    
+                    stream = await Promise.race([getUserMediaPromise, timeoutPromise]);
+                    console.log('getUserMedia 성공! (간단한 설정)', stream);
+                } catch (simpleError) {
+                    console.error('간단한 설정 실패:', simpleError);
+                    console.log('오류 이름:', simpleError.name);
+                    console.log('오류 메시지:', simpleError.message);
+                    
+                    // 상세 설정으로 재시도
+                    try {
+                        console.log('상세 설정으로 getUserMedia 재시도 중...');
+                        stream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { 
+                                width: { ideal: 640 },
+                                height: { ideal: 480 },
+                                facingMode: 'user'
+                            }, 
+                            audio: false 
+                        });
+                        console.log('getUserMedia 성공! (상세 설정)', stream);
+                    } catch (detailedError) {
+                        console.error('상세 설정도 실패:', detailedError);
+                        console.log('상세 오류 이름:', detailedError.name);
+                        console.log('상세 오류 메시지:', detailedError.message);
+                        throw detailedError;
+                    }
+                }
+                
+                console.log('비디오 엘리먼트 생성 중...');
                 const video = document.createElement('video');
                 video.srcObject = stream;
                 video.autoplay = true;
+                video.playsInline = true;
                 video.style.width = '100%';
                 video.style.height = '100%';
                 video.style.objectFit = 'cover';
+                video.style.borderRadius = '8px';
                 
+                console.log('비디오 이벤트 리스너 추가...');
+                video.addEventListener('loadedmetadata', () => {
+                    console.log('비디오 메타데이터 로드됨');
+                });
+                
+                video.addEventListener('canplay', () => {
+                    console.log('비디오 재생 가능');
+                });
+                
+                video.addEventListener('error', (e) => {
+                    console.error('비디오 오류:', e);
+                });
+                
+                console.log('프리뷰 영역에 비디오 추가 중...');
                 const preview = document.getElementById('cameraPreview');
                 preview.innerHTML = '';
                 preview.appendChild(video);
+                console.log('비디오 추가 완료');
                 
-                console.log('카메라가 시작되었습니다.');
+                // 카메라 시작 버튼 비활성화, 중지 버튼 활성화
+                document.querySelector('button[onclick="startCamera()"]').disabled = true;
+                document.querySelector('button[onclick="stopCamera()"]').disabled = false;
+                
+                console.log('카메라가 성공적으로 시작되었습니다.');
+                alert('카메라가 성공적으로 시작되었습니다!');
+                
             } catch (error) {
                 console.error('카메라 접근 실패:', error);
-                alert('카메라 접근에 실패했습니다: ' + error.message);
+                
+                let errorMessage = '카메라 접근에 실패했습니다.\n\n';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMessage += '카메라 권한이 거부되었습니다.\n브라우저 설정에서 카메라 권한을 허용해주세요.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage += '카메라를 찾을 수 없습니다.\n카메라가 연결되어 있는지 확인해주세요.';
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage += '카메라가 다른 앱에서 사용 중입니다.\n다른 앱을 종료하고 다시 시도해주세요.';
+                } else {
+                    errorMessage += '오류: ' + error.message;
+                }
+                
+                alert(errorMessage);
             }
         }
 
@@ -200,12 +307,17 @@
                 stream = null;
             }
             const preview = document.getElementById('cameraPreview');
-            preview.innerHTML = '카메라가 중지되었습니다';
+            preview.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">카메라가 중지되었습니다.</p>';
+            
+            // 버튼 상태 복원
+            document.querySelector('button[onclick="startCamera()"]').disabled = false;
+            document.querySelector('button[onclick="stopCamera()"]').disabled = true;
             
             // 감정 분석도 중지
             stopEmotionAnalysis();
             
             console.log('카메라가 중지되었습니다.');
+            alert('카메라가 중지되었습니다.');
         }
 
         // 감정 분석 시작

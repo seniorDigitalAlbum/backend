@@ -1,4 +1,4 @@
-package com.chimaenono.dearmind.kakao.config;
+package com.chimaenono.dearmind.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

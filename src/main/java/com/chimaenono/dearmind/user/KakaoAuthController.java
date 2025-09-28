@@ -26,8 +26,8 @@ public class KakaoAuthController {
      * 카카오 로그인 콜백 처리
      */
     @GetMapping("/callback")
-    @Operation(summary = "카카오 로그인 콜백", description = "카카오 로그인 후 콜백을 처리하고 사용자 정보를 반환합니다.")
-    public ResponseEntity<Map<String, Object>> kakaoCallback(
+    @Operation(summary = "카카오 로그인 콜백", description = "카카오 로그인 후 콜백을 처리하고 프론트엔드로 리다이렉트합니다.")
+    public ResponseEntity<String> kakaoCallback(
             @Parameter(description = "카카오 인증 코드", required = true)
             @RequestParam("code") String code) {
         
@@ -40,24 +40,52 @@ public class KakaoAuthController {
             // JWT 토큰 생성
             String token = jwtConfig.generateToken(user.getId(), user.getKakaoId(), user.getNickname());
             
-            // 응답 데이터 구성
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "로그인 성공");
-            response.put("token", token);
-            response.put("user", user);
-            
             log.info("카카오 로그인 성공: userId={}, token 생성됨", user.getId());
-            return ResponseEntity.ok(response);
+            
+            // HTML 페이지로 리다이렉트 (JavaScript를 사용하여 프론트엔드로 리다이렉트)
+            String html = String.format("""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>카카오 로그인 완료</title>
+                </head>
+                <body>
+                    <script>
+                        // 프론트엔드로 리다이렉트
+                        window.location.href = 'http://localhost:8081/login?code=%s&token=%s';
+                    </script>
+                    <p>로그인 처리 중입니다...</p>
+                </body>
+                </html>
+                """, code, token);
+            
+            return ResponseEntity.ok()
+                    .header("Content-Type", "text/html; charset=UTF-8")
+                    .body(html);
             
         } catch (Exception e) {
             log.error("카카오 로그인 실패", e);
             
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", "로그인 실패: " + e.getMessage());
+            // 에러 발생 시 HTML 페이지로 리다이렉트
+            String html = String.format("""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>카카오 로그인 실패</title>
+                </head>
+                <body>
+                    <script>
+                        // 프론트엔드로 리다이렉트
+                        window.location.href = 'http://localhost:8081/login?error=%s';
+                    </script>
+                    <p>로그인 처리 중 오류가 발생했습니다...</p>
+                </body>
+                </html>
+                """, e.getMessage());
             
-            return ResponseEntity.badRequest().body(errorResponse);
+            return ResponseEntity.ok()
+                    .header("Content-Type", "text/html; charset=UTF-8")
+                    .body(html);
         }
     }
     

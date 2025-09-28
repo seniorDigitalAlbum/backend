@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,13 @@ public class KakaoAuthController {
     private final KakaoAuthService kakaoAuthService;
     private final UserService userService;
     private final com.chimaenono.dearmind.config.JwtConfig jwtConfig;
+    
+    // 카카오 앱 설정 (application.yml에서 주입)
+    @Value("${security.oauth2.client.registration.kakao.client-id}")
+    private String clientId;
+    
+    @Value("${security.oauth2.client.registration.kakao.redirect-uri}")
+    private String redirectUri;
     
     /**
      * 카카오 로그인 콜백 처리
@@ -71,8 +79,8 @@ public class KakaoAuthController {
         
         // 카카오 로그인 URL 구성
         String kakaoLoginUrl = "https://kauth.kakao.com/oauth/authorize?" +
-                "client_id=a45363409e8fae86e1a436badaa55eef&" +
-                "redirect_uri=http://localhost:8080/api/auth/kakao/callback&" +
+                "client_id=" + clientId + "&" +
+                "redirect_uri=" + redirectUri + "&" +
                 "response_type=code&" +
                 "scope=name,profile_nickname,profile_image,gender,phone_number";
         

@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.chimaenono.dearmind.user.User;
 import com.chimaenono.dearmind.user.UserService;
+import com.chimaenono.dearmind.notification.NotificationService;
 
 import java.util.List;
 
@@ -18,6 +19,7 @@ public class GuardianSeniorRelationshipService {
 
     private final GuardianSeniorRelationshipRepository relationshipRepository;
     private final UserService userService;
+    private final NotificationService notificationService;
 
     /**
      * 보호자-시니어 관계 요청 생성
@@ -50,7 +52,20 @@ public class GuardianSeniorRelationshipService {
 
         // 관계 생성
         GuardianSeniorRelationship relationship = new GuardianSeniorRelationship(guardian, senior);
-        return relationshipRepository.save(relationship);
+        GuardianSeniorRelationship savedRelationship = relationshipRepository.save(relationship);
+        
+        // 보호자에게 알람 생성
+        try {
+            notificationService.createGuardianRequestNotification(guardianId, seniorId, savedRelationship.getId());
+            log.info("보호자 연결 요청 알람 생성 완료: guardianId={}, seniorId={}, relationshipId={}", 
+                    guardianId, seniorId, savedRelationship.getId());
+        } catch (Exception e) {
+            log.error("보호자 연결 요청 알람 생성 실패: guardianId={}, seniorId={}, error={}", 
+                    guardianId, seniorId, e.getMessage());
+            // 알람 생성 실패해도 관계 생성은 성공으로 처리
+        }
+        
+        return savedRelationship;
     }
 
     /**
@@ -77,7 +92,24 @@ public class GuardianSeniorRelationshipService {
         }
 
         relationship.approve();
-        return relationshipRepository.save(relationship);
+        GuardianSeniorRelationship savedRelationship = relationshipRepository.save(relationship);
+        
+        // 보호자에게 승인 알람 생성
+        try {
+            notificationService.createGuardianRequestApprovedNotification(
+                    relationship.getGuardian().getId(), 
+                    relationship.getSenior().getId(), 
+                    savedRelationship.getId()
+            );
+            log.info("보호자 연결 요청 승인 알람 생성 완료: guardianId={}, seniorId={}, relationshipId={}", 
+                    relationship.getGuardian().getId(), relationship.getSenior().getId(), savedRelationship.getId());
+        } catch (Exception e) {
+            log.error("보호자 연결 요청 승인 알람 생성 실패: guardianId={}, seniorId={}, error={}", 
+                    relationship.getGuardian().getId(), relationship.getSenior().getId(), e.getMessage());
+            // 알람 생성 실패해도 관계 승인은 성공으로 처리
+        }
+        
+        return savedRelationship;
     }
 
     /**
@@ -104,7 +136,24 @@ public class GuardianSeniorRelationshipService {
         }
 
         relationship.reject();
-        return relationshipRepository.save(relationship);
+        GuardianSeniorRelationship savedRelationship = relationshipRepository.save(relationship);
+        
+        // 보호자에게 거절 알람 생성
+        try {
+            notificationService.createGuardianRequestRejectedNotification(
+                    relationship.getGuardian().getId(), 
+                    relationship.getSenior().getId(), 
+                    savedRelationship.getId()
+            );
+            log.info("보호자 연결 요청 거절 알람 생성 완료: guardianId={}, seniorId={}, relationshipId={}", 
+                    relationship.getGuardian().getId(), relationship.getSenior().getId(), savedRelationship.getId());
+        } catch (Exception e) {
+            log.error("보호자 연결 요청 거절 알람 생성 실패: guardianId={}, seniorId={}, error={}", 
+                    relationship.getGuardian().getId(), relationship.getSenior().getId(), e.getMessage());
+            // 알람 생성 실패해도 관계 거절은 성공으로 처리
+        }
+        
+        return savedRelationship;
     }
 
     /**

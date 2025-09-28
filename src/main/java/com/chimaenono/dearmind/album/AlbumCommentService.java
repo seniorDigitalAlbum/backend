@@ -3,6 +3,7 @@ package com.chimaenono.dearmind.album;
 import com.chimaenono.dearmind.conversation.ConversationRepository;
 import com.chimaenono.dearmind.user.User;
 import com.chimaenono.dearmind.user.UserService;
+import com.chimaenono.dearmind.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class AlbumCommentService {
     private final AlbumCommentRepository albumCommentRepository;
     private final ConversationRepository conversationRepository;
     private final UserService userService;
+    private final NotificationService notificationService;
 
     /**
      * 특정 대화의 댓글 목록을 조회합니다.
@@ -63,6 +65,15 @@ public class AlbumCommentService {
 
         AlbumComment savedComment = albumCommentRepository.save(comment);
         log.info("댓글 추가 완료: ID={}", savedComment.getId());
+
+        // 대화 소유자에게 댓글 추가 알람 생성
+        try {
+            createCommentAddedNotification(conversationId, userId, savedComment.getId());
+        } catch (Exception e) {
+            log.error("댓글 추가 알람 생성 실패: conversationId={}, userId={}, commentId={}, error={}", 
+                    conversationId, userId, savedComment.getId(), e.getMessage());
+            // 알람 생성 실패해도 댓글 추가는 성공으로 처리
+        }
 
         return savedComment;
     }
@@ -126,5 +137,42 @@ public class AlbumCommentService {
                     );
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 댓글 추가 알람을 생성합니다.
+     */
+    private void createCommentAddedNotification(Long conversationId, Long commenterId, Long commentId) {
+        log.info("댓글 추가 알람 생성: conversationId={}, commenterId={}, commentId={}", conversationId, commenterId, commentId);
+        
+        // 대화 정보 조회
+        com.chimaenono.dearmind.conversation.Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new RuntimeException("대화를 찾을 수 없습니다: " + conversationId));
+        
+        // 댓글 작성자 정보 조회
+        User commenter = userService.findById(commenterId)
+                .orElseThrow(() -> new RuntimeException("댓글 작성자를 찾을 수 없습니다: " + commenterId));
+        
+        // 대화 소유자에게만 알람 전송 (자신이 댓글을 단 경우 제외)
+        Long conversationOwnerId = conversation.getUserId();
+        if (!conversationOwnerId.equals(commenterId)) {
+            String title = "새로운 댓글이 추가되었습니다";
+            String content = String.format("%s님이 일기에 댓글을 남겼습니다", commenter.getNickname());
+            
+            notificationService.createNotification(
+                    conversationOwnerId,
+                    commenterId,
+                    com.chimaenono.dearmind.notification.Notification.NotificationType.COMMENT_ADDED,
+                    title,
+                    content,
+                    commentId
+            );
+            
+            log.info("댓글 추가 알람 생성 완료: conversationOwnerId={}, commenterId={}, commentId={}", 
+                    conversationOwnerId, commenterId, commentId);
+        } else {
+            log.info("자신이 작성한 댓글이므로 알람 생성하지 않음: conversationOwnerId={}, commenterId={}", 
+                    conversationOwnerId, commenterId);
+        }
     }
 }

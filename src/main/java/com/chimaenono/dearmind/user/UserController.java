@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 import java.util.Optional;
 
 @RestController
@@ -146,9 +148,9 @@ public class UserController {
     public ResponseEntity<Void> activateUser(
             @Parameter(description = "사용자 ID", required = true)
             @PathVariable Long userId) {
-        
+
         log.info("사용자 계정 활성화 요청: userId={}", userId);
-        
+
         try {
             userService.activateUser(userId);
             return ResponseEntity.ok().build();
@@ -156,6 +158,72 @@ public class UserController {
             log.error("사용자 계정 활성화 실패: {}", e.getMessage());
             return ResponseEntity.notFound().build();
         }
+    }
+
+    /**
+     * 사용자 타입 업데이트
+     */
+    @PutMapping("/{userId}/user-type")
+    @Operation(summary = "사용자 타입 업데이트", description = "사용자 타입을 설정합니다.")
+    public ResponseEntity<User> updateUserType(
+            @Parameter(description = "사용자 ID", required = true)
+            @PathVariable Long userId,
+            @RequestBody UserTypeRequest request) {
+
+        log.info("사용자 타입 업데이트 요청: userId={}, userType={}", userId, request.getUserType());
+
+        try {
+            User updatedUser = userService.updateUserType(userId, request.getUserType());
+            return ResponseEntity.ok(updatedUser);
+        } catch (RuntimeException e) {
+            log.error("사용자 타입 업데이트 실패: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * 시니어 검색 (이름으로)
+     */
+    @GetMapping("/search/seniors/name")
+    @Operation(summary = "이름으로 시니어 검색", description = "이름으로 시니어 사용자를 검색합니다.")
+    public ResponseEntity<List<User>> searchSeniorsByName(
+            @Parameter(description = "검색할 이름", required = true)
+            @RequestParam String name) {
+
+        log.info("이름으로 시니어 검색 요청: name={}", name);
+
+        List<User> seniors = userService.searchSeniorsByName(name);
+        return ResponseEntity.ok(seniors);
+    }
+
+    /**
+     * 시니어 검색 (전화번호로)
+     */
+    @GetMapping("/search/seniors/phone")
+    @Operation(summary = "전화번호로 시니어 검색", description = "전화번호로 시니어 사용자를 검색합니다.")
+    public ResponseEntity<List<User>> searchSeniorsByPhoneNumber(
+            @Parameter(description = "검색할 전화번호", required = true)
+            @RequestParam String phoneNumber) {
+
+        log.info("전화번호로 시니어 검색 요청: phoneNumber={}", phoneNumber);
+
+        List<User> seniors = userService.searchSeniorsByPhoneNumber(phoneNumber);
+        return ResponseEntity.ok(seniors);
+    }
+
+    /**
+     * 시니어 통합 검색 (이름 또는 전화번호)
+     */
+    @GetMapping("/search/seniors")
+    @Operation(summary = "시니어 통합 검색", description = "이름 또는 전화번호로 시니어 사용자를 검색합니다.")
+    public ResponseEntity<List<User>> searchSeniors(
+            @Parameter(description = "검색어 (이름 또는 전화번호)", required = true)
+            @RequestParam String searchTerm) {
+
+        log.info("시니어 통합 검색 요청: searchTerm={}", searchTerm);
+
+        List<User> seniors = userService.searchSeniorsByNameOrPhoneNumber(searchTerm);
+        return ResponseEntity.ok(seniors);
     }
     
     /**
@@ -179,5 +247,16 @@ public class UserController {
         
         public String getPhoneNumber() { return phoneNumber; }
         public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+    }
+
+    /**
+     * 사용자 타입 업데이트 요청 DTO
+     */
+    public static class UserTypeRequest {
+        private String userType;
+
+        // Getters and Setters
+        public String getUserType() { return userType; }
+        public void setUserType(String userType) { this.userType = userType; }
     }
 }

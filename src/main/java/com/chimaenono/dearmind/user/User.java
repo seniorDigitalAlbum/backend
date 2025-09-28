@@ -40,6 +40,10 @@ public class User {
     @Schema(description = "전화번호", example = "010-1234-5678")
     private String phoneNumber;
     
+    @Column(name = "user_type")
+    @Schema(description = "사용자 타입", example = "SENIOR", allowableValues = {"SENIOR", "GUARDIAN"})
+    private String userType; // SENIOR, GUARDIAN, null(미선택)
+    
     @Column(name = "is_active", nullable = false)
     @Schema(description = "계정 활성화 상태", example = "true")
     private Boolean isActive = true;

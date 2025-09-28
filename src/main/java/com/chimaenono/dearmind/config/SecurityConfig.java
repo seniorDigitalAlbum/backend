@@ -35,16 +35,15 @@ public class SecurityConfig {
             
             // 요청별 권한 설정
             .authorizeHttpRequests(authz -> authz
+                // Swagger 관련 경로 (가장 먼저 설정)
+                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs", "/swagger-resources/**", "/webjars/**", "/api-docs/**", "/swagger-config").permitAll()
+                
                 // 공개 API (인증 불필요)
                 .requestMatchers(
                     "/api/auth/kakao/**",           // 카카오 로그인 관련
                     "/api/users/check-*",           // 중복 확인 API
                     "/static/**",                   // 정적 리소스
                     "/kakao-login.html",            // 카카오 로그인 테스트 페이지
-                    "/swagger-ui/**",               // Swagger UI
-                    "/v3/api-docs/**",              // Swagger API 문서
-                    "/swagger-resources/**",        // Swagger 리소스
-                    "/webjars/**",                  // WebJars
                     "/favicon.ico"                  // 파비콘
                 ).permitAll()
                 

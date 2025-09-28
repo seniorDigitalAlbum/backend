@@ -7,11 +7,13 @@ import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.List;
 
 @Configuration
-public class SwaggerConfig {
+public class SwaggerConfig implements WebMvcConfigurer {
 
     @Bean
     public OpenAPI customOpenAPI() {
@@ -35,5 +37,11 @@ public class SwaggerConfig {
                                 .url("http://172.30.1.72:8080")
                                 .description("Local Network Server")
                 ));
+    }
+
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        registry.addRedirectViewController("/", "/swagger-ui/index.html");
+        registry.addRedirectViewController("/swagger-ui", "/swagger-ui/index.html");
     }
 }

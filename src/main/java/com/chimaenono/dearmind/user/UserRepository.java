@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -44,5 +45,29 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     @Query("SELECT u FROM User u WHERE u.kakaoId = :kakaoId AND u.isActive = true")
     Optional<User> findActiveUserByKakaoId(@Param("kakaoId") String kakaoId);
+    
+    /**
+     * 이름으로 시니어 검색 (userType이 SENIOR인 사용자만)
+     * @param name 검색할 이름
+     * @return 시니어 사용자 목록
+     */
+    @Query("SELECT u FROM User u WHERE u.userType = 'SENIOR' AND u.nickname LIKE %:name% AND u.isActive = true")
+    List<User> findSeniorsByName(@Param("name") String name);
+    
+    /**
+     * 전화번호로 시니어 검색 (userType이 SENIOR인 사용자만)
+     * @param phoneNumber 검색할 전화번호
+     * @return 시니어 사용자 목록
+     */
+    @Query("SELECT u FROM User u WHERE u.userType = 'SENIOR' AND u.phoneNumber LIKE %:phoneNumber% AND u.isActive = true")
+    List<User> findSeniorsByPhoneNumber(@Param("phoneNumber") String phoneNumber);
+    
+    /**
+     * 이름 또는 전화번호로 시니어 통합 검색 (userType이 SENIOR인 사용자만)
+     * @param searchTerm 검색어 (이름 또는 전화번호)
+     * @return 시니어 사용자 목록
+     */
+    @Query("SELECT u FROM User u WHERE u.userType = 'SENIOR' AND u.isActive = true AND (u.nickname LIKE %:searchTerm% OR u.phoneNumber LIKE %:searchTerm%)")
+    List<User> findSeniorsByNameOrPhoneNumber(@Param("searchTerm") String searchTerm);
     
 }

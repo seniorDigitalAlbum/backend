@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -163,5 +164,52 @@ public class UserService {
      */
     public boolean existsByKakaoId(String kakaoId) {
         return userRepository.existsByKakaoId(kakaoId);
+    }
+    
+    /**
+     * 사용자 타입 업데이트
+     * @param userId 사용자 ID
+     * @param userType 사용자 타입 (SENIOR, GUARDIAN)
+     * @return 업데이트된 사용자 정보
+     */
+    @Transactional
+    public User updateUserType(Long userId, String userType) {
+        log.info("사용자 타입 업데이트: userId={}, userType={}", userId, userType);
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다: " + userId));
+        
+        user.setUserType(userType);
+        return userRepository.save(user);
+    }
+    
+    /**
+     * 이름으로 시니어 검색
+     * @param name 검색할 이름
+     * @return 시니어 사용자 목록
+     */
+    public List<User> searchSeniorsByName(String name) {
+        log.info("이름으로 시니어 검색: name={}", name);
+        return userRepository.findSeniorsByName(name);
+    }
+    
+    /**
+     * 전화번호로 시니어 검색
+     * @param phoneNumber 검색할 전화번호
+     * @return 시니어 사용자 목록
+     */
+    public List<User> searchSeniorsByPhoneNumber(String phoneNumber) {
+        log.info("전화번호로 시니어 검색: phoneNumber={}", phoneNumber);
+        return userRepository.findSeniorsByPhoneNumber(phoneNumber);
+    }
+    
+    /**
+     * 이름 또는 전화번호로 시니어 통합 검색
+     * @param searchTerm 검색어 (이름 또는 전화번호)
+     * @return 시니어 사용자 목록
+     */
+    public List<User> searchSeniorsByNameOrPhoneNumber(String searchTerm) {
+        log.info("이름 또는 전화번호로 시니어 통합 검색: searchTerm={}", searchTerm);
+        return userRepository.findSeniorsByNameOrPhoneNumber(searchTerm);
     }
 }

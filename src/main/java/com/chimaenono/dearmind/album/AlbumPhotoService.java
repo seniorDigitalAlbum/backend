@@ -4,6 +4,7 @@ import com.chimaenono.dearmind.conversation.Conversation;
 import com.chimaenono.dearmind.conversation.ConversationRepository;
 import com.chimaenono.dearmind.user.User;
 import com.chimaenono.dearmind.user.UserService;
+import com.chimaenono.dearmind.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class AlbumPhotoService {
     private final ConversationRepository conversationRepository;
     private final AlbumCommentRepository albumCommentRepository;
     private final UserService userService;
+    private final NotificationService notificationService;
 
     /**
      * 특정 대화의 사진 목록을 조회합니다.
@@ -75,6 +77,15 @@ public class AlbumPhotoService {
 
         AlbumPhoto savedPhoto = albumPhotoRepository.save(photo);
         log.info("사진 추가 완료: ID={}", savedPhoto.getId());
+
+        // 대화 소유자에게 사진 업로드 알람 생성
+        try {
+            createPhotoUploadNotification(conversationId, userId, savedPhoto.getId());
+        } catch (Exception e) {
+            log.error("사진 업로드 알람 생성 실패: conversationId={}, userId={}, photoId={}, error={}", 
+                    conversationId, userId, savedPhoto.getId(), e.getMessage());
+            // 알람 생성 실패해도 사진 추가는 성공으로 처리
+        }
 
         return savedPhoto;
     }
@@ -208,5 +219,42 @@ public class AlbumPhotoService {
                     );
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 사진 업로드 알람을 생성합니다.
+     */
+    private void createPhotoUploadNotification(Long conversationId, Long uploaderId, Long photoId) {
+        log.info("사진 업로드 알람 생성: conversationId={}, uploaderId={}, photoId={}", conversationId, uploaderId, photoId);
+        
+        // 대화 정보 조회
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new RuntimeException("대화를 찾을 수 없습니다: " + conversationId));
+        
+        // 업로더 정보 조회
+        User uploader = userService.findById(uploaderId)
+                .orElseThrow(() -> new RuntimeException("업로더를 찾을 수 없습니다: " + uploaderId));
+        
+        // 대화 소유자에게만 알람 전송 (자신이 업로드한 경우 제외)
+        Long conversationOwnerId = conversation.getUserId();
+        if (!conversationOwnerId.equals(uploaderId)) {
+            String title = "새로운 사진이 추가되었습니다";
+            String content = String.format("%s님이 일기에 사진을 추가했습니다", uploader.getNickname());
+            
+            notificationService.createNotification(
+                    conversationOwnerId,
+                    uploaderId,
+                    com.chimaenono.dearmind.notification.Notification.NotificationType.PHOTO_UPLOAD,
+                    title,
+                    content,
+                    photoId
+            );
+            
+            log.info("사진 업로드 알람 생성 완료: conversationOwnerId={}, uploaderId={}, photoId={}", 
+                    conversationOwnerId, uploaderId, photoId);
+        } else {
+            log.info("자신이 업로드한 사진이므로 알람 생성하지 않음: conversationOwnerId={}, uploaderId={}", 
+                    conversationOwnerId, uploaderId);
+        }
     }
 }

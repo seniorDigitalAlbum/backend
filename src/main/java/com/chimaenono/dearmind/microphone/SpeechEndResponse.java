@@ -31,15 +31,13 @@ public class SpeechEndResponse {
     @Schema(description = "카메라 세션 ID", example = "camera_session_789")
     private String cameraSessionId;
     
-    @Schema(description = "사용자 ID", example = "user123")
-    private String userId;
     
     @Schema(description = "대화 세션 ID", example = "1")
     private Long conversationId;
     
     public static SpeechEndResponse success(Long conversationMessageId, String userText, 
                                           String microphoneSessionId, String cameraSessionId, 
-                                          String userId, Long conversationId) {
+                                          Long conversationId) {
         return SpeechEndResponse.builder()
                 .status("success")
                 .message("발화가 종료되었습니다.")
@@ -47,7 +45,6 @@ public class SpeechEndResponse {
                 .userText(userText)
                 .microphoneSessionId(microphoneSessionId)
                 .cameraSessionId(cameraSessionId)
-                .userId(userId)
                 .conversationId(conversationId)
                 .build();
     }

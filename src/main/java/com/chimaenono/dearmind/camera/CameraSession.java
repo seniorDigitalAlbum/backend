@@ -25,9 +25,9 @@ public class CameraSession {
     @Schema(description = "WebSocket 세션 ID", example = "session_12345")
     private String sessionId;
     
-    @Column(name = "user_id")
-    @Schema(description = "사용자 ID", example = "user_123")
-    private String userId;
+    @Column(name = "user_id", nullable = false)
+    @Schema(description = "사용자 ID", example = "1")
+    private Long userId;
     
     @Column(name = "status")
     @Schema(description = "카메라 상태", example = "ACTIVE")

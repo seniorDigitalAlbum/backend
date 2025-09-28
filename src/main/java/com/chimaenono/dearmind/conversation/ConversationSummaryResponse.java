@@ -17,8 +17,6 @@ public class ConversationSummaryResponse {
     @Schema(description = "대화 세션 ID", example = "123")
     private Long conversationId;
     
-    @Schema(description = "사용자 ID", example = "user123")
-    private String userId;
     
     @Schema(description = "선택된 질문", example = "오늘 기분이 어떠세요?")
     private String question;

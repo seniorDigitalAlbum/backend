@@ -13,10 +13,6 @@ import jakarta.validation.constraints.NotBlank;
 @Schema(description = "발화 시작 요청 DTO")
 public class SpeechStartRequest {
     
-    @NotBlank(message = "사용자 ID는 필수입니다")
-    @Schema(description = "사용자 ID", example = "user123", required = true)
-    private String userId;
-    
     @NotBlank(message = "마이크 세션 ID는 필수입니다")
     @Schema(description = "마이크 세션 ID", example = "microphone_session_456", required = true)
     private String microphoneSessionId;

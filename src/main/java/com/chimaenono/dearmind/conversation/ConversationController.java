@@ -2,6 +2,7 @@ package com.chimaenono.dearmind.conversation;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import com.chimaenono.dearmind.conversationMessage.ConversationMessage;
@@ -55,10 +56,11 @@ public class ConversationController {
         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     public ResponseEntity<ConversationStartResponse> startConversation(
-            @Parameter(description = "대화 시작 요청 데이터") @RequestBody ConversationStartRequest request) {
+            @Parameter(description = "대화 시작 요청 데이터") @RequestBody ConversationStartRequest request,
+            @AuthenticationPrincipal(expression = "id") Long userId) {
         
         try {
-            ConversationStartResponse response = conversationService.startConversation(request);
+            ConversationStartResponse response = conversationService.startConversation(request, userId);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
@@ -84,28 +86,26 @@ public class ConversationController {
                 .orElse(ResponseEntity.notFound().build());
     }
     
-    @GetMapping("/user/{userId}")
-    @Operation(summary = "사용자별 대화 세션 목록", description = "사용자의 모든 대화 세션을 최신순으로 조회합니다")
+    @GetMapping("/user")
+    @Operation(summary = "사용자별 대화 세션 목록", description = "현재 로그인한 사용자의 모든 대화 세션을 최신순으로 조회합니다")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "대화 세션 목록 조회 성공")
     })
-    public ResponseEntity<List<Conversation>> getConversationsByUser(
-            @Parameter(description = "사용자 ID", example = "user123") @PathVariable String userId) {
+    public ResponseEntity<List<Conversation>> getConversationsByUser(@AuthenticationPrincipal(expression = "id") Long userId) {
         
-        List<Conversation> conversations = conversationService.getConversationsByUserId(userId);
+        List<Conversation> conversations = conversationService.getConversationsByUser(userId);
         return ResponseEntity.ok(conversations);
     }
     
-    @GetMapping("/user/{userId}/active")
-    @Operation(summary = "사용자의 활성 대화 세션", description = "사용자의 활성 상태 대화 세션을 조회합니다")
+    @GetMapping("/user/active")
+    @Operation(summary = "사용자의 활성 대화 세션", description = "현재 로그인한 사용자의 활성 상태 대화 세션을 조회합니다")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "활성 대화 세션 조회 성공"),
         @ApiResponse(responseCode = "404", description = "활성 대화 세션이 없음")
     })
-    public ResponseEntity<Conversation> getActiveConversation(
-            @Parameter(description = "사용자 ID", example = "user123") @PathVariable String userId) {
+    public ResponseEntity<Conversation> getActiveConversation(@AuthenticationPrincipal(expression = "id") Long userId) {
         
-        Optional<Conversation> conversation = conversationService.getActiveConversationByUserId(userId);
+        Optional<Conversation> conversation = conversationService.getActiveConversationByUser(userId);
         return conversation.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -184,13 +184,12 @@ public class ConversationController {
     
     
     
-    @PostMapping("/dummy/{userId}")
-    @Operation(summary = "더미 대화 데이터 생성", description = "테스트용 더미 대화 세션과 메시지를 생성합니다")
+    @PostMapping("/dummy")
+    @Operation(summary = "더미 대화 데이터 생성", description = "현재 로그인한 사용자에 대한 테스트용 더미 대화 세션과 메시지를 생성합니다")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "더미 데이터 생성 성공")
     })
-    public ResponseEntity<String> createDummyConversations(
-            @Parameter(description = "사용자 ID", example = "user123") @PathVariable String userId) {
+    public ResponseEntity<String> createDummyConversations(@AuthenticationPrincipal(expression = "id") Long userId) {
         
         conversationService.createDummyConversations(userId);
         return ResponseEntity.ok("더미 대화 데이터가 성공적으로 생성되었습니다.");

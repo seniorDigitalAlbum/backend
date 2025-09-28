@@ -2,15 +2,16 @@ package com.chimaenono.dearmind.album;
 
 import com.chimaenono.dearmind.conversation.Conversation;
 import com.chimaenono.dearmind.conversation.ConversationRepository;
+import com.chimaenono.dearmind.user.User;
+import com.chimaenono.dearmind.user.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
-
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -21,6 +22,7 @@ public class AlbumPhotoService {
     private final AlbumPhotoRepository albumPhotoRepository;
     private final ConversationRepository conversationRepository;
     private final AlbumCommentRepository albumCommentRepository;
+    private final UserService userService;
 
     /**
      * 특정 대화의 사진 목록을 조회합니다.
@@ -56,18 +58,18 @@ public class AlbumPhotoService {
      * 새로운 사진을 추가합니다.
      */
     @Transactional
-    public AlbumPhoto addPhoto(Long conversationId, String imageUrl, String uploadedBy) {
-        log.info("대화 ID {}에 사진 추가: 업로더={}, URL={}", conversationId, uploadedBy, imageUrl);
+    public AlbumPhoto addPhoto(Long conversationId, String imageUrl, Long userId) {
+        log.info("대화 ID {}에 사진 추가: 사용자ID={}, URL={}", conversationId, userId, imageUrl);
 
         // 대화 존재 여부 확인
-        Conversation conversation = conversationRepository.findById(conversationId)
+        conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대화입니다: " + conversationId));
 
         // 사진 생성 및 저장
         AlbumPhoto photo = AlbumPhoto.builder()
-                .conversation(conversation)
+                .conversationId(conversationId)
                 .imageUrl(imageUrl)
-                .uploadedBy(uploadedBy)
+                .userId(userId)
                 .isCover(false) // 기본값은 표지가 아님
                 .build();
 
@@ -130,9 +132,9 @@ public class AlbumPhotoService {
     /**
      * 특정 사용자가 업로드한 사진 목록을 조회합니다.
      */
-    public List<AlbumPhoto> getPhotosByUploadedBy(String uploadedBy) {
-        log.info("업로더 {}의 사진 목록 조회", uploadedBy);
-        return albumPhotoRepository.findByUploadedByOrderByCreatedAtDesc(uploadedBy);
+    public List<AlbumPhoto> getPhotosByUserId(Long userId) {
+        log.info("사용자 ID {}의 사진 목록 조회", userId);
+        return albumPhotoRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
     /**
@@ -184,5 +186,27 @@ public class AlbumPhotoService {
         conversationRepository.save(conversation);
         
         log.info("✅ 앨범 공개 상태 업데이트 완료: conversationId={}, isPublic={}", conversationId, isPublic);
+    }
+
+    /**
+     * 특정 대화의 사진 목록을 작성자 정보와 함께 조회합니다.
+     */
+    public List<AlbumPhotoResponse> getPhotosWithAuthorInfo(Long conversationId) {
+        log.info("대화 ID {}의 사진 목록을 작성자 정보와 함께 조회", conversationId);
+        
+        List<AlbumPhoto> photos = getPhotosByConversationId(conversationId);
+        
+        return photos.stream()
+                .map(photo -> {
+                    User author = userService.findById(photo.getUserId())
+                            .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다: " + photo.getUserId()));
+                    
+                    return AlbumPhotoResponse.from(
+                            photo,
+                            author.getNickname(),
+                            author.getProfileImageUrl()
+                    );
+                })
+                .collect(Collectors.toList());
     }
 }

@@ -34,7 +34,7 @@ public class MicrophoneService {
     private STTService sttService;
 
     @Operation(summary = "마이크 세션 생성", description = "새로운 마이크 세션을 생성합니다")
-    public MicrophoneSession createSession(String userId, String audioFormat, Integer sampleRate) {
+    public MicrophoneSession createSession(Long userId, String audioFormat, Integer sampleRate) {
         MicrophoneSession session = new MicrophoneSession();
         session.setSessionId(UUID.randomUUID().toString());
         session.setUserId(userId);
@@ -50,7 +50,7 @@ public class MicrophoneService {
     }
 
     @Operation(summary = "사용자 세션 조회", description = "특정 사용자의 모든 마이크 세션을 조회합니다")
-    public List<MicrophoneSession> getSessionsByUserId(String userId) {
+    public List<MicrophoneSession> getSessionsByUserId(Long userId) {
         return microphoneSessionRepository.findByUserId(userId);
     }
 
@@ -87,7 +87,7 @@ public class MicrophoneService {
     }
 
     @Operation(summary = "사용자 활성 세션 조회", description = "특정 사용자의 활성 세션을 조회합니다")
-    public Optional<MicrophoneSession> getActiveSessionByUserId(String userId) {
+    public Optional<MicrophoneSession> getActiveSessionByUserId(Long userId) {
         return microphoneSessionRepository.findByUserIdAndStatus(userId, "ACTIVE");
     }
 
@@ -128,12 +128,8 @@ public class MicrophoneService {
         CameraSession cameraSession = cameraSessionOpt.get();
         
         // 사용자 ID 검증 (마이크와 카메라 세션 모두)
-        if (!microphoneSession.getUserId().equals(request.getUserId())) {
-            throw new RuntimeException("마이크 세션의 사용자 ID가 일치하지 않습니다.");
-        }
-        
-        if (!cameraSession.getUserId().equals(request.getUserId())) {
-            throw new RuntimeException("카메라 세션의 사용자 ID가 일치하지 않습니다.");
+        if (!microphoneSession.getUserId().equals(cameraSession.getUserId())) {
+            throw new RuntimeException("마이크 세션과 카메라 세션의 사용자 ID가 일치하지 않습니다.");
         }
         
         // 현재 상태가 ACTIVE인지 확인 (마이크와 카메라 세션 모두)
@@ -191,12 +187,8 @@ public class MicrophoneService {
         CameraSession cameraSession = cameraSessionOpt.get();
         
         // 사용자 ID 검증 (마이크와 카메라 세션 모두)
-        if (!microphoneSession.getUserId().equals(request.getUserId())) {
-            throw new RuntimeException("마이크 세션의 사용자 ID가 일치하지 않습니다.");
-        }
-        
-        if (!cameraSession.getUserId().equals(request.getUserId())) {
-            throw new RuntimeException("카메라 세션의 사용자 ID가 일치하지 않습니다.");
+        if (!microphoneSession.getUserId().equals(cameraSession.getUserId())) {
+            throw new RuntimeException("마이크 세션과 카메라 세션의 사용자 ID가 일치하지 않습니다.");
         }
         
         // 현재 상태가 RECORDING인지 확인 (마이크와 카메라 세션 모두)
@@ -243,7 +235,6 @@ public class MicrophoneService {
                 userText,
                 request.getMicrophoneSessionId(),
                 request.getCameraSessionId(),
-                request.getUserId(),
                 request.getConversationId()
             );
             

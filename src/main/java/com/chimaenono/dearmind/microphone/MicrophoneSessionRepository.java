@@ -9,7 +9,7 @@ import java.util.Optional;
 @Repository
 public interface MicrophoneSessionRepository extends JpaRepository<MicrophoneSession, Long> {
     Optional<MicrophoneSession> findBySessionId(String sessionId);
-    List<MicrophoneSession> findByUserId(String userId);
+    List<MicrophoneSession> findByUserId(Long userId);
     List<MicrophoneSession> findByStatus(String status);
-    Optional<MicrophoneSession> findByUserIdAndStatus(String userId, String status);
+    Optional<MicrophoneSession> findByUserIdAndStatus(Long userId, String status);
 } 

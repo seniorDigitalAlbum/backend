@@ -19,8 +19,8 @@ public class Conversation {
     private Long id;
     
     @Column(name = "user_id", nullable = false)
-    @Schema(description = "사용자 ID", example = "user123")
-    private String userId;
+    @Schema(description = "사용자 ID", example = "1")
+    private Long userId;
     
     @Column(name = "question_id", nullable = false)
     @Schema(description = "선택된 질문 ID", example = "1")

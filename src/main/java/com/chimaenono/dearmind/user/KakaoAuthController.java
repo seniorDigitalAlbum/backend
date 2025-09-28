@@ -74,7 +74,7 @@ public class KakaoAuthController {
                 "client_id=a45363409e8fae86e1a436badaa55eef&" +
                 "redirect_uri=http://localhost:8080/api/auth/kakao/callback&" +
                 "response_type=code&" +
-                "scope=name,profile_nickname,gender,phone_number";
+                "scope=name,profile_nickname,profile_image,gender,phone_number";
         
         Map<String, String> response = new HashMap<>();
         response.put("loginUrl", kakaoLoginUrl);

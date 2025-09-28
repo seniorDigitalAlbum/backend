@@ -18,7 +18,7 @@ public class CameraService {
     private CameraSessionRepository cameraSessionRepository;
 
     @Operation(summary = "카메라 세션 생성", description = "새로운 카메라 세션을 생성합니다")
-    public CameraSession createSession(String userId) {
+    public CameraSession createSession(Long userId) {
         CameraSession session = new CameraSession();
         session.setSessionId(UUID.randomUUID().toString());
         session.setUserId(userId);
@@ -32,7 +32,7 @@ public class CameraService {
     }
 
     @Operation(summary = "사용자 세션 조회", description = "특정 사용자의 모든 카메라 세션을 조회합니다")
-    public List<CameraSession> getSessionsByUserId(String userId) {
+    public List<CameraSession> getSessionsByUserId(Long userId) {
         return cameraSessionRepository.findByUserId(userId);
     }
 
@@ -69,7 +69,7 @@ public class CameraService {
     }
 
     @Operation(summary = "사용자 활성 세션 조회", description = "특정 사용자의 활성 세션을 조회합니다")
-    public Optional<CameraSession> getActiveSessionByUserId(String userId) {
+    public Optional<CameraSession> getActiveSessionByUserId(Long userId) {
         return cameraSessionRepository.findByUserIdAndStatus(userId, "ACTIVE");
     }
 } 

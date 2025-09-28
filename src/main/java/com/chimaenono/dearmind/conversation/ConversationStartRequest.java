@@ -9,9 +9,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "대화 시작 요청")
 public class ConversationStartRequest {
     
-    @Schema(description = "사용자 ID", example = "user123", required = true)
-    private String userId;
-    
     @Schema(description = "선택한 질문 ID", example = "5", required = true)
     private Long questionId;
     
@@ -19,20 +16,11 @@ public class ConversationStartRequest {
     public ConversationStartRequest() {}
     
     // 전체 생성자
-    public ConversationStartRequest(String userId, Long questionId) {
-        this.userId = userId;
+    public ConversationStartRequest(Long questionId) {
         this.questionId = questionId;
     }
     
     // Getter와 Setter
-    public String getUserId() {
-        return userId;
-    }
-    
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-    
     public Long getQuestionId() {
         return questionId;
     }
@@ -44,8 +32,7 @@ public class ConversationStartRequest {
     @Override
     public String toString() {
         return "ConversationStartRequest{" +
-                "userId='" + userId + '\'' +
-                ", questionId=" + questionId +
+                "questionId=" + questionId +
                 '}';
     }
 }

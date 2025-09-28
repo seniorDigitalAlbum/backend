@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.util.HashMap;
 import java.util.List;
@@ -31,13 +32,13 @@ public class AlbumController {
      */
     @GetMapping("/{conversationId}/comments")
     @Operation(summary = "댓글 목록 조회", description = "특정 대화의 댓글 목록을 조회합니다.")
-    public ResponseEntity<List<AlbumComment>> getComments(
+    public ResponseEntity<List<AlbumCommentResponse>> getComments(
             @Parameter(description = "대화 ID", required = true)
             @PathVariable Long conversationId) {
         
         try {
             log.info("🔍 댓글 목록 조회 요청 시작: conversationId={}", conversationId);
-            List<AlbumComment> comments = albumCommentService.getCommentsByConversationId(conversationId);
+            List<AlbumCommentResponse> comments = albumCommentService.getCommentsWithAuthorInfo(conversationId);
             log.info("✅ 댓글 목록 조회 성공: conversationId={}, 댓글 수={}", conversationId, comments.size());
             return ResponseEntity.ok(comments);
         } catch (IllegalArgumentException e) {
@@ -64,7 +65,7 @@ public class AlbumController {
             AlbumComment comment = albumCommentService.addComment(
                     conversationId, 
                     request.getContent(), 
-                    request.getAuthor()
+                    request.getUserId()
             );
             return ResponseEntity.ok(comment);
         } catch (IllegalArgumentException e) {
@@ -97,6 +98,7 @@ public class AlbumController {
         }
     }
 
+
     // ========== 사진 관련 API ==========
 
     /**
@@ -104,13 +106,13 @@ public class AlbumController {
      */
     @GetMapping("/{conversationId}/photos")
     @Operation(summary = "사진 목록 조회", description = "특정 대화의 사진 목록을 조회합니다.")
-    public ResponseEntity<List<AlbumPhoto>> getPhotos(
+    public ResponseEntity<List<AlbumPhotoResponse>> getPhotos(
             @Parameter(description = "대화 ID", required = true)
             @PathVariable Long conversationId) {
         
         try {
             log.info("🔍 사진 목록 조회 요청 시작: conversationId={}", conversationId);
-            List<AlbumPhoto> photos = albumPhotoService.getPhotosByConversationId(conversationId);
+            List<AlbumPhotoResponse> photos = albumPhotoService.getPhotosWithAuthorInfo(conversationId);
             log.info("✅ 사진 목록 조회 성공: conversationId={}, 사진 수={}", conversationId, photos.size());
             return ResponseEntity.ok(photos);
         } catch (IllegalArgumentException e) {
@@ -156,7 +158,7 @@ public class AlbumController {
             AlbumPhoto photo = albumPhotoService.addPhoto(
                     conversationId, 
                     request.getImageUrl(), 
-                    request.getUploadedBy()
+                    request.getUserId()
             );
             return ResponseEntity.ok(photo);
         } catch (IllegalArgumentException e) {
@@ -177,14 +179,14 @@ public class AlbumController {
             @Parameter(description = "대화 ID", required = true)
             @PathVariable Long conversationId,
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "uploadedBy", defaultValue = "가족") String uploadedBy) {
+            @AuthenticationPrincipal(expression = "id") Long userId) {
         
         try {
             // 1. S3에 파일 업로드
             String imageUrl = s3UploadService.uploadImage(file, "album-photos");
             
             // 2. 앨범에 사진 추가
-            AlbumPhoto photo = albumPhotoService.addPhoto(conversationId, imageUrl, uploadedBy);
+            AlbumPhoto photo = albumPhotoService.addPhoto(conversationId, imageUrl, userId);
             
             return ResponseEntity.ok(photo);
         } catch (IllegalArgumentException e) {
@@ -345,23 +347,23 @@ public class AlbumController {
 
     public static class CommentRequest {
         private String content;
-        private String author = "가족";
+        private Long userId;
 
         // Getters and Setters
         public String getContent() { return content; }
         public void setContent(String content) { this.content = content; }
-        public String getAuthor() { return author; }
-        public void setAuthor(String author) { this.author = author; }
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
     }
 
     public static class PhotoRequest {
         private String imageUrl;
-        private String uploadedBy = "가족";
+        private Long userId;
 
         // Getters and Setters
         public String getImageUrl() { return imageUrl; }
         public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
-        public String getUploadedBy() { return uploadedBy; }
-        public void setUploadedBy(String uploadedBy) { this.uploadedBy = uploadedBy; }
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
     }
 }

@@ -109,7 +109,7 @@ public class MicrophoneController {
     })
     public ResponseEntity<Map<String, Object>> getUserSessions(
         @Parameter(description = "사용자 ID", example = "user_123")
-        @PathVariable String userId
+        @PathVariable Long userId
     ) {
         Map<String, Object> response = new HashMap<>();
         List<MicrophoneSession> sessions = microphoneService.getSessionsByUserId(userId);

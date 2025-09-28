@@ -1,13 +1,15 @@
 package com.chimaenono.dearmind.album;
 
-import com.chimaenono.dearmind.conversation.Conversation;
 import com.chimaenono.dearmind.conversation.ConversationRepository;
+import com.chimaenono.dearmind.user.User;
+import com.chimaenono.dearmind.user.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -17,6 +19,7 @@ public class AlbumCommentService {
 
     private final AlbumCommentRepository albumCommentRepository;
     private final ConversationRepository conversationRepository;
+    private final UserService userService;
 
     /**
      * 특정 대화의 댓글 목록을 조회합니다.
@@ -44,17 +47,17 @@ public class AlbumCommentService {
      * 새로운 댓글을 추가합니다.
      */
     @Transactional
-    public AlbumComment addComment(Long conversationId, String content, String author) {
-        log.info("대화 ID {}에 댓글 추가: 작성자={}, 내용={}", conversationId, author, content);
+    public AlbumComment addComment(Long conversationId, String content, Long userId) {
+        log.info("대화 ID {}에 댓글 추가: 사용자ID={}, 내용={}", conversationId, userId, content);
 
         // 대화 존재 여부 확인
-        Conversation conversation = conversationRepository.findById(conversationId)
+        conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대화입니다: " + conversationId));
 
         // 댓글 생성 및 저장
         AlbumComment comment = AlbumComment.builder()
-                .conversation(conversation)
-                .author(author)
+                .conversationId(conversationId)
+                .userId(userId)
                 .content(content)
                 .build();
 
@@ -98,8 +101,30 @@ public class AlbumCommentService {
     /**
      * 특정 사용자가 작성한 댓글 목록을 조회합니다.
      */
-    public List<AlbumComment> getCommentsByAuthor(String author) {
-        log.info("작성자 {}의 댓글 목록 조회", author);
-        return albumCommentRepository.findByAuthorOrderByCreatedAtDesc(author);
+    public List<AlbumComment> getCommentsByUserId(Long userId) {
+        log.info("사용자 ID {}의 댓글 목록 조회", userId);
+        return albumCommentRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    /**
+     * 특정 대화의 댓글 목록을 작성자 정보와 함께 조회합니다.
+     */
+    public List<AlbumCommentResponse> getCommentsWithAuthorInfo(Long conversationId) {
+        log.info("대화 ID {}의 댓글 목록을 작성자 정보와 함께 조회", conversationId);
+        
+        List<AlbumComment> comments = getCommentsByConversationId(conversationId);
+        
+        return comments.stream()
+                .map(comment -> {
+                    User author = userService.findById(comment.getUserId())
+                            .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다: " + comment.getUserId()));
+                    
+                    return AlbumCommentResponse.from(
+                            comment,
+                            author.getNickname(),
+                            author.getProfileImageUrl()
+                    );
+                })
+                .collect(Collectors.toList());
     }
 }

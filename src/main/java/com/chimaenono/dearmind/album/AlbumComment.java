@@ -1,7 +1,5 @@
 package com.chimaenono.dearmind.album;
 
-import com.chimaenono.dearmind.conversation.Conversation;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,19 +22,11 @@ public class AlbumComment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "conversation_id", nullable = false)
-    @JsonIgnore
-    private Conversation conversation;
+    @Column(name = "conversation_id", nullable = false)
+    private Long conversationId;
 
-    // JSON 응답용 conversationId 필드
-    @Transient
-    public Long getConversationId() {
-        return conversation != null ? conversation.getId() : null;
-    }
-
-    @Column(nullable = false, length = 50)
-    private String author;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;

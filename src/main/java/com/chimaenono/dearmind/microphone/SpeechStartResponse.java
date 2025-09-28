@@ -19,8 +19,6 @@ public class SpeechStartResponse {
     @Schema(description = "카메라 세션 ID", example = "camera_session_789")
     private String cameraSessionId;
     
-    @Schema(description = "사용자 ID", example = "user123")
-    private String userId;
     
     @Schema(description = "발화 세션 상태", example = "RECORDING")
     private String status;
@@ -39,7 +37,6 @@ public class SpeechStartResponse {
         SpeechStartResponse response = new SpeechStartResponse();
         response.setMicrophoneSessionId(microphoneSession.getSessionId());
         response.setCameraSessionId(cameraSessionId);
-        response.setUserId(microphoneSession.getUserId());
         response.setStatus(microphoneSession.getStatus());
         response.setSpeechStartedAt(LocalDateTime.now());
         response.setConversationId(conversationId);

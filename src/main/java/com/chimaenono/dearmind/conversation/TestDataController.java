@@ -48,7 +48,7 @@ public class TestDataController {
             
             // 2. 대화 세션 생성
             Conversation conversation = new Conversation();
-            conversation.setUserId("test_user_123");
+            conversation.setUserId(1L);
             conversation.setQuestionId(1L);
             conversation.setCameraSessionId("camera_test_123");
             conversation.setMicrophoneSessionId("microphone_test_456");

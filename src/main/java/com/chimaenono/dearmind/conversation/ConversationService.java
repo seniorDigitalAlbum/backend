@@ -47,9 +47,9 @@ public class ConversationService {
     private MicrophoneService microphoneService;
     
     @Operation(summary = "통합 대화 시작", description = "카메라 세션, 마이크 세션, 대화방을 통합으로 생성합니다")
-    public ConversationStartResponse startConversation(ConversationStartRequest request) {
+    public ConversationStartResponse startConversation(ConversationStartRequest request, Long userId) {
         // 입력 검증
-        if (request.getUserId() == null || request.getUserId().trim().isEmpty()) {
+        if (userId == null) {
             throw new IllegalArgumentException("사용자 ID는 필수입니다.");
         }
         if (request.getQuestionId() == null) {
@@ -62,14 +62,14 @@ public class ConversationService {
         
         try {
             // 1. 카메라 세션 생성
-            String cameraSessionId = cameraService.createSession(request.getUserId()).getSessionId();
+            String cameraSessionId = cameraService.createSession(userId).getSessionId();
             
             // 2. 마이크 세션 생성
-            String microphoneSessionId = microphoneService.createSession(request.getUserId(), "WAV", 44100).getSessionId();
+            String microphoneSessionId = microphoneService.createSession(userId, "WAV", 44100).getSessionId();
             
             // 3. 대화방 생성
             Conversation conversation = createConversation(
-                request.getUserId(), 
+                userId, 
                 request.getQuestionId(), 
                 cameraSessionId, 
                 microphoneSessionId
@@ -90,7 +90,7 @@ public class ConversationService {
     }
     
     @Operation(summary = "대화 세션 생성", description = "새로운 대화 세션을 생성합니다")
-    public Conversation createConversation(String userId, Long questionId, String cameraSessionId, String microphoneSessionId) {
+    public Conversation createConversation(Long userId, Long questionId, String cameraSessionId, String microphoneSessionId) {
         Conversation conversation = new Conversation();
         conversation.setUserId(userId);
         conversation.setQuestionId(questionId);
@@ -107,12 +107,12 @@ public class ConversationService {
     }
     
     @Operation(summary = "사용자별 대화 세션 조회", description = "사용자의 모든 대화 세션을 최신순으로 조회합니다")
-    public List<Conversation> getConversationsByUserId(String userId) {
+    public List<Conversation> getConversationsByUser(Long userId) {
         return conversationRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
     
     @Operation(summary = "사용자의 활성 대화 세션 조회", description = "사용자의 활성 상태 대화 세션을 조회합니다")
-    public Optional<Conversation> getActiveConversationByUserId(String userId) {
+    public Optional<Conversation> getActiveConversationByUser(Long userId) {
         return conversationRepository.findByUserIdAndStatus(userId, Conversation.ConversationStatus.ACTIVE);
     }
     
@@ -180,7 +180,7 @@ public class ConversationService {
     }
     
     @Operation(summary = "더미 대화 데이터 생성", description = "테스트용 더미 대화 세션과 메시지를 생성합니다")
-    public void createDummyConversations(String userId) {
+    public void createDummyConversations(Long userId) {
         // 기존 대화 데이터가 있으면 생성하지 않음
         if (conversationRepository.countByUserId(userId) > 0) {
             return;
@@ -285,7 +285,6 @@ public class ConversationService {
         // 응답 객체 생성
         ConversationSummaryResponse response = new ConversationSummaryResponse();
         response.setConversationId(conversationId);
-        response.setUserId(conversation.getUserId());
         response.setQuestion(questionText);
         response.setStartTime(conversation.getCreatedAt());
         response.setEndTime(conversation.getEndedAt());

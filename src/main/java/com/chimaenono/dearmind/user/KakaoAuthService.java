@@ -2,6 +2,7 @@ package com.chimaenono.dearmind.user;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -18,10 +19,15 @@ public class KakaoAuthService {
     private final RestTemplate restTemplate;
     private final UserService userService;
     
-    // 카카오 앱 설정 (실제 값으로 변경 필요)
-    private final String clientId = "a45363409e8fae86e1a436badaa55eef";
-    private final String clientSecret = "tUwU1MFOcu5U9GqjaM8lGA96eSEshaSL";
-    private final String redirectUri = "http://localhost:8080/api/auth/kakao/callback";
+    // 카카오 앱 설정 (application.yml에서 주입)
+    @Value("${security.oauth2.client.registration.kakao.client-id}")
+    private String clientId;
+    
+    @Value("${security.oauth2.client.registration.kakao.client-secret}")
+    private String clientSecret;
+    
+    @Value("${security.oauth2.client.registration.kakao.redirect-uri}")
+    private String redirectUri;
     
     private static final String KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token";
     private static final String KAKAO_USER_INFO_URL = "https://kapi.kakao.com/v2/user/me";

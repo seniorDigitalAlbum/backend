@@ -83,8 +83,10 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(Arrays.asList(
             "http://localhost:3000",    // React 개발 서버
             "http://localhost:3001",    // 추가 프론트엔드 포트
+            "http://localhost:8081",    // 프론트엔드 포트
             "http://127.0.0.1:3000",
-            "http://127.0.0.1:3001"
+            "http://127.0.0.1:3001",
+            "http://127.0.0.1:8081"
         ));
         
         // 허용할 HTTP 메서드

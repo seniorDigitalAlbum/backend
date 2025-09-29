@@ -140,6 +140,9 @@ public class KakaoAuthService {
         
         // 4. 추가 정보 업데이트 (선택사항)
         if (kakaoUserInfo.getGender() != null || kakaoUserInfo.getPhoneNumber() != null) {
+            // 카카오에서 받은 원본 전화번호 로그
+            log.info("🔍 카카오에서 받은 원본 전화번호: '{}'", kakaoUserInfo.getPhoneNumber());
+            
             // 전화번호 정규화 (카카오 형식을 한국 형식으로 변환)
             String normalizedPhoneNumber = normalizePhoneNumber(kakaoUserInfo.getPhoneNumber());
             
@@ -195,9 +198,18 @@ public class KakaoAuthService {
             
             // 010이 중복된 경우 (8201041774768 -> 01041774768)
             if (withoutCountryCode.startsWith("010") && withoutCountryCode.length() == 13) {
-                // 010 제거 후 010 추가
+                // 010 제거 후 올바른 형식으로 변환
                 String without010 = withoutCountryCode.substring(3);
-                return "010-" + without010.substring(0, 4) + "-" + without010.substring(4);
+                log.info("010 중복 제거 후: {}", without010);
+                String result = "010-" + without010.substring(0, 4) + "-" + without010.substring(4);
+                log.info("최종 전화번호: {}", result);
+                return result;
+            }
+            // 10으로 시작하는 경우 (821041774768 -> 1041774768) - 0이 빠진 경우
+            else if (withoutCountryCode.startsWith("10") && withoutCountryCode.length() == 10) {
+                String result = "010-" + withoutCountryCode.substring(2, 6) + "-" + withoutCountryCode.substring(6);
+                log.info("10으로 시작하는 경우 처리 후: {}", result);
+                return result;
             }
             // 10자리인 경우 앞에 0 추가
             else if (withoutCountryCode.length() == 10) {

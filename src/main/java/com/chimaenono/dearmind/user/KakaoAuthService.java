@@ -46,10 +46,13 @@ public class KakaoAuthService {
         
         // 추가 정보 업데이트 (gender, phone_number)
         if (kakaoUserInfo.getGender() != null || kakaoUserInfo.getPhoneNumber() != null) {
+            // 전화번호 정규화 (카카오 형식을 한국 형식으로 변환)
+            String normalizedPhoneNumber = normalizePhoneNumber(kakaoUserInfo.getPhoneNumber());
+            
             userService.updateUserInfo(
                 user.getId(), null, null,
                 kakaoUserInfo.getGender(),
-                kakaoUserInfo.getPhoneNumber()
+                normalizedPhoneNumber
             );
         }
         
@@ -137,10 +140,13 @@ public class KakaoAuthService {
         
         // 4. 추가 정보 업데이트 (선택사항)
         if (kakaoUserInfo.getGender() != null || kakaoUserInfo.getPhoneNumber() != null) {
+            // 전화번호 정규화 (카카오 형식을 한국 형식으로 변환)
+            String normalizedPhoneNumber = normalizePhoneNumber(kakaoUserInfo.getPhoneNumber());
+            
             userService.updateUserInfo(
                 user.getId(), null, null,
                 kakaoUserInfo.getGender(),
-                kakaoUserInfo.getPhoneNumber()
+                normalizedPhoneNumber
             );
         }
         
@@ -164,6 +170,51 @@ public class KakaoAuthService {
             phoneNumber = (String) kakaoAccount.get("phone_number");
         }
         return new KakaoUserInfo(id, nickname, profileImageUrl, gender, phoneNumber);
+    }
+
+    /**
+     * 전화번호 정규화 메서드
+     * 카카오 형식 (+82 10-4177-4768)을 한국 형식 (010-4177-4768)으로 변환
+     */
+    private String normalizePhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return null;
+        }
+        
+        // 숫자만 추출
+        String numbers = phoneNumber.replaceAll("[^0-9]", "");
+        
+        // +82로 시작하는 경우 (한국 국가번호)
+        if (numbers.startsWith("82")) {
+            // 82 제거 후 0 추가
+            if (numbers.length() >= 10) {
+                String withoutCountryCode = numbers.substring(2);
+                // 10자리인 경우 앞에 0 추가
+                if (withoutCountryCode.length() == 10) {
+                    return "0" + withoutCountryCode.substring(0, 3) + "-" + 
+                           withoutCountryCode.substring(3, 7) + "-" + 
+                           withoutCountryCode.substring(7);
+                }
+                // 11자리인 경우 그대로 사용
+                else if (withoutCountryCode.length() == 11) {
+                    return withoutCountryCode.substring(0, 3) + "-" + 
+                           withoutCountryCode.substring(3, 7) + "-" + 
+                           withoutCountryCode.substring(7);
+                }
+            }
+        }
+        // 010으로 시작하는 경우
+        else if (numbers.startsWith("010")) {
+            if (numbers.length() == 11) {
+                return numbers.substring(0, 3) + "-" + 
+                       numbers.substring(3, 7) + "-" + 
+                       numbers.substring(7);
+            }
+        }
+        
+        // 변환할 수 없는 경우 원본 반환
+        log.warn("전화번호 정규화 실패, 원본 사용: {}", phoneNumber);
+        return phoneNumber;
     }
 
     /**

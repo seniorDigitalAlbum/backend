@@ -70,4 +70,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE u.userType = 'SENIOR' AND u.isActive = true AND (u.nickname LIKE %:searchTerm% OR u.phoneNumber LIKE %:searchTerm%)")
     List<User> findSeniorsByNameOrPhoneNumber(@Param("searchTerm") String searchTerm);
     
+    /**
+     * 이름과 전화번호 모두 일치하는 시니어 검색 (userType이 SENIOR인 사용자만)
+     * @param name 검색할 이름
+     * @param phoneNumber 검색할 전화번호
+     * @return 시니어 사용자 목록
+     */
+    @Query("SELECT u FROM User u WHERE u.userType = 'SENIOR' AND u.isActive = true AND u.nickname = :name AND u.phoneNumber = :phoneNumber")
+    List<User> findSeniorsByNameAndPhoneNumber(@Param("name") String name, @Param("phoneNumber") String phoneNumber);
+    
 }

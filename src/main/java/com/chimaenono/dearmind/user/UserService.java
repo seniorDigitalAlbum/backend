@@ -212,4 +212,15 @@ public class UserService {
         log.info("이름 또는 전화번호로 시니어 통합 검색: searchTerm={}", searchTerm);
         return userRepository.findSeniorsByNameOrPhoneNumber(searchTerm);
     }
+    
+    /**
+     * 이름과 전화번호 모두 일치하는 시니어 검색
+     * @param name 검색할 이름
+     * @param phoneNumber 검색할 전화번호
+     * @return 시니어 사용자 목록
+     */
+    public List<User> searchSeniorsByNameAndPhoneNumber(String name, String phoneNumber) {
+        log.info("이름과 전화번호 모두 일치하는 시니어 검색: name={}, phoneNumber={}", name, phoneNumber);
+        return userRepository.findSeniorsByNameAndPhoneNumber(name, phoneNumber);
+    }
 }

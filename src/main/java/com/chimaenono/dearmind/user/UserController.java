@@ -225,6 +225,23 @@ public class UserController {
         List<User> seniors = userService.searchSeniorsByNameOrPhoneNumber(searchTerm);
         return ResponseEntity.ok(seniors);
     }
+
+    /**
+     * 시니어 정확한 검색 (이름과 전화번호 모두 일치)
+     */
+    @GetMapping("/search/seniors/exact")
+    @Operation(summary = "시니어 정확한 검색", description = "이름과 전화번호가 모두 일치하는 시니어를 검색합니다.")
+    public ResponseEntity<List<User>> searchSeniorsExact(
+            @Parameter(description = "검색할 이름", required = true)
+            @RequestParam String name,
+            @Parameter(description = "검색할 전화번호", required = true)
+            @RequestParam String phoneNumber) {
+
+        log.info("시니어 정확한 검색 요청: name={}, phoneNumber={}", name, phoneNumber);
+
+        List<User> seniors = userService.searchSeniorsByNameAndPhoneNumber(name, phoneNumber);
+        return ResponseEntity.ok(seniors);
+    }
     
     /**
      * 사용자 정보 업데이트 요청 DTO

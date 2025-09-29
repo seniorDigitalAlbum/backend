@@ -43,6 +43,16 @@ public class KakaoAuthService {
             kakaoUserInfo.getNickname(),
             kakaoUserInfo.getProfileImageUrl()
         );
+        
+        // 추가 정보 업데이트 (gender, phone_number)
+        if (kakaoUserInfo.getGender() != null || kakaoUserInfo.getPhoneNumber() != null) {
+            userService.updateUserInfo(
+                user.getId(), null, null,
+                kakaoUserInfo.getGender(),
+                kakaoUserInfo.getPhoneNumber()
+            );
+        }
+        
         log.info("카카오 로그인 처리 완료: userId={}", user.getId());
         return user;
     }
@@ -74,7 +84,7 @@ public class KakaoAuthService {
         }
     }
     /**
-     * 액세스 토큰으로 카카오 사용자 정보 조회 (수정 없음)
+     * 액세스 토큰으로 카카오 사용자 정보 조회
      * @param accessToken 카카오 액세스 토큰
      * @return 카카오 사용자 정보
      */

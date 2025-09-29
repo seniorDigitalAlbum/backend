@@ -44,7 +44,8 @@ public class SecurityConfig {
                     "/api/users/check-*",           // 중복 확인 API
                     "/static/**",                   // 정적 리소스
                     "/kakao-login.html",            // 카카오 로그인 테스트 페이지
-                    "/favicon.ico"                  // 파비콘
+                    "/favicon.ico",                 // 파비콘
+                    "/ws/**"                        // WebSocket 연결
                 ).permitAll()
                 
                 // 관리자 API (ADMIN 권한 필요)
@@ -83,9 +84,11 @@ public class SecurityConfig {
             "http://localhost:3000",    // React 개발 서버
             "http://localhost:3001",    // 추가 프론트엔드 포트
             "http://localhost:8081",    // 프론트엔드 포트
+            "http://localhost:8082",    // 웹 프론트엔드 포트
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
-            "http://127.0.0.1:8081"
+            "http://127.0.0.1:8081",
+            "http://127.0.0.1:8082"
         ));
         
         // 허용할 HTTP 메서드

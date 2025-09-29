@@ -18,7 +18,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
         // 알람 WebSocket 핸들러 등록
         // 경로: /ws/notifications/{userId}
         registry.addHandler(notificationWebSocketHandler, "/ws/notifications/{userId}")
-                .setAllowedOrigins("*") // 개발 환경에서는 모든 Origin 허용
+                .setAllowedOriginPatterns("*") // 모든 Origin 허용 (패턴 사용)
                 .withSockJS(); // SockJS 지원 (폴백 옵션)
     }
 }

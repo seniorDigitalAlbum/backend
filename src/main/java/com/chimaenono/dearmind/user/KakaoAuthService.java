@@ -174,33 +174,42 @@ public class KakaoAuthService {
 
     /**
      * 전화번호 정규화 메서드
-     * 카카오 형식 (+82 10-4177-4768)을 한국 형식 (010-4177-4768)으로 변환
+     * 카카오 형식 (+82 010-4177-4768)을 한국 형식 (010-4177-4768)으로 변환
      */
     private String normalizePhoneNumber(String phoneNumber) {
         if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
             return null;
         }
         
+        log.info("전화번호 정규화 시작: {}", phoneNumber);
+        
         // 숫자만 추출
         String numbers = phoneNumber.replaceAll("[^0-9]", "");
+        log.info("숫자만 추출된 전화번호: {}", numbers);
         
         // +82로 시작하는 경우 (한국 국가번호)
         if (numbers.startsWith("82")) {
-            // 82 제거 후 0 추가
-            if (numbers.length() >= 10) {
-                String withoutCountryCode = numbers.substring(2);
-                // 10자리인 경우 앞에 0 추가
-                if (withoutCountryCode.length() == 10) {
-                    return "0" + withoutCountryCode.substring(0, 3) + "-" + 
-                           withoutCountryCode.substring(3, 7) + "-" + 
-                           withoutCountryCode.substring(7);
-                }
-                // 11자리인 경우 그대로 사용
-                else if (withoutCountryCode.length() == 11) {
-                    return withoutCountryCode.substring(0, 3) + "-" + 
-                           withoutCountryCode.substring(3, 7) + "-" + 
-                           withoutCountryCode.substring(7);
-                }
+            // 82 제거
+            String withoutCountryCode = numbers.substring(2);
+            log.info("국가번호 제거 후: {}", withoutCountryCode);
+            
+            // 010이 중복된 경우 (8201041774768 -> 01041774768)
+            if (withoutCountryCode.startsWith("010") && withoutCountryCode.length() == 13) {
+                // 010 제거 후 010 추가
+                String without010 = withoutCountryCode.substring(3);
+                return "010-" + without010.substring(0, 4) + "-" + without010.substring(4);
+            }
+            // 10자리인 경우 앞에 0 추가
+            else if (withoutCountryCode.length() == 10) {
+                return "0" + withoutCountryCode.substring(0, 3) + "-" + 
+                       withoutCountryCode.substring(3, 6) + "-" + 
+                       withoutCountryCode.substring(6);
+            }
+            // 11자리인 경우 그대로 사용
+            else if (withoutCountryCode.length() == 11) {
+                return withoutCountryCode.substring(0, 3) + "-" + 
+                       withoutCountryCode.substring(3, 7) + "-" + 
+                       withoutCountryCode.substring(7);
             }
         }
         // 010으로 시작하는 경우

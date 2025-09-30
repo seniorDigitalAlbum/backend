@@ -122,4 +122,23 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             }
         }
     }
+    
+    /**
+     * 쿼리 파라미터에서 JWT 토큰 추출
+     */
+    private String getTokenFromQuery(WebSocketSession session) {
+        String query = session.getUri().getQuery();
+        if (query == null) {
+            return null;
+        }
+        
+        String[] params = query.split("&");
+        for (String param : params) {
+            String[] keyValue = param.split("=");
+            if (keyValue.length == 2 && "token".equals(keyValue[0])) {
+                return keyValue[1];
+            }
+        }
+        return null;
+    }
 }

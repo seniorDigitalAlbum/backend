@@ -44,8 +44,11 @@ public class SecurityConfig {
                     "/api/users/check-*",           // 중복 확인 API
                     "/api/gpt/**",                  // GPT API (테스트용)
                     "/static/**",                   // 정적 리소스
+
                     "/*.html",                      // 모든 HTML 파일
-                    "/favicon.ico"                  // 파비콘
+                    "/favicon.ico",                  // 파비콘
+                    "/ws/**"                        // WebSocket 연결
+
                 ).permitAll()
                 
                 // 관리자 API (ADMIN 권한 필요)
@@ -84,9 +87,11 @@ public class SecurityConfig {
             "http://localhost:3000",    // React 개발 서버
             "http://localhost:3001",    // 추가 프론트엔드 포트
             "http://localhost:8081",    // 프론트엔드 포트
+            "http://localhost:8082",    // 웹 프론트엔드 포트
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
-            "http://127.0.0.1:8081"
+            "http://127.0.0.1:8081",
+            "http://127.0.0.1:8082"
         ));
         
         // 허용할 HTTP 메서드

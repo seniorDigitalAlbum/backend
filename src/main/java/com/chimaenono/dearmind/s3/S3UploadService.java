@@ -1,6 +1,5 @@
-package com.chimaenono.dearmind.album;
+package com.chimaenono.dearmind.s3;
 
-import com.chimaenono.dearmind.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

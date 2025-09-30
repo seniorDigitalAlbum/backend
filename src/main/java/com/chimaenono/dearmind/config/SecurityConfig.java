@@ -42,8 +42,9 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/kakao/**",           // 카카오 로그인 관련
                     "/api/users/check-*",           // 중복 확인 API
+                    "/api/gpt/**",                  // GPT API (테스트용)
                     "/static/**",                   // 정적 리소스
-                    "/kakao-login.html",            // 카카오 로그인 테스트 페이지
+                    "/*.html",                      // 모든 HTML 파일
                     "/favicon.ico"                  // 파비콘
                 ).permitAll()
                 

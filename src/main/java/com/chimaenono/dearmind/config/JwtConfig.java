@@ -18,17 +18,19 @@ import java.util.function.Function;
 @Slf4j
 public class JwtConfig {
 
-    // JWT 시크릿 키 (실제 운영에서는 환경변수로 관리)
-    private final String SECRET_KEY = "dearmind-secret-key-for-jwt-token-generation-2024";
+    // JWT 시크릿 키 (application.yml에서 주입)
+    @Value("${jwt.secret-key}")
+    private String secretKey;
     
-    // 토큰 유효기간 (24시간)
-    private final long JWT_EXPIRATION = 24 * 60 * 60 * 1000;
+    // 토큰 유효기간 (application.yml에서 주입)
+    @Value("${jwt.expiration}")
+    private long jwtExpiration;
 
     /**
      * JWT 시크릿 키 생성
      */
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+        return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 
     /**
@@ -53,7 +55,7 @@ public class JwtConfig {
      */
     private String createToken(Map<String, Object> claims, String subject) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + JWT_EXPIRATION);
+        Date expiryDate = new Date(now.getTime() + jwtExpiration);
 
         return Jwts.builder()
                 .setClaims(claims)

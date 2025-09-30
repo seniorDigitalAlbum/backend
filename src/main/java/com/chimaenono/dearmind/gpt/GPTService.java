@@ -3,6 +3,7 @@ package com.chimaenono.dearmind.gpt;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -107,111 +108,32 @@ public class GPTService {
         return objectMapper.readValue(response.body(), GPTResponse.class);
     }
     
+    @Autowired
+    @Lazy
+    private GPTServiceNew gptServiceNew;
+    
     /**
-     * 감정 기반 대화 응답을 생성합니다.
+     * 감정 기반 대화 응답을 생성합니다 (새로운 프롬프트 구조).
+     * GPTServiceNew에 위임합니다.
+     * @return JSON 형태의 응답 (Map<String, Object>)
      */
-    public String generateEmotionBasedResponse(String emotion, Double confidence, 
-                                             String prevUser, String prevSys, String currUser) throws Exception {
+    public Map<String, Object> generateEmotionBasedResponse(
+            String emotion, 
+            Double confidence, 
+            String prevUser, 
+            String prevSys, 
+            String currUser,
+            String topicRoot,
+            int stepIndex,
+            int ruleStep,
+            List<String> facetHistory,
+            Map<String, String> targetAnchor) throws Exception {
         
-        // 감정 매핑 (영어 -> 한국어)
-        Map<String, String> emotionMapping = Map.of(
-            "joy", "기쁨", "sadness", "슬픔", "anger", "분노",
-            "fear", "불안", "surprise", "당황", "neutral", "중립",
-            "hurt", "상처"
+        // GPTServiceNew에 위임
+        return gptServiceNew.generateEmotionBasedResponse(
+            emotion, confidence, prevUser, prevSys, currUser,
+            topicRoot, stepIndex, ruleStep, facetHistory, targetAnchor
         );
-        
-        String emotionKorean = emotionMapping.getOrDefault(emotion, "중립");
-        int confidencePercent = (int) (confidence * 100);
-        
-        // 회상 요법 기반 프롬프트 구성
-        StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append("**[역할 설정]**\n");
-        promptBuilder.append("당신은 사용자를 사랑하는 가족입니다.\n");
-        promptBuilder.append("사용자와 함께 옛날 이야기를 나누며 즐거운 시간을 보내고 싶어합니다.\n");
-        promptBuilder.append("금지: 새로운 사실 창작, 훈계/판단, 의학적 조언, 장황한 설명.\n");
-        promptBuilder.append("과거의 좋은 기억들을 함께 떠올리며 따뜻한 대화를 나누는 것이 목표입니다.\n\n");
-        
-        promptBuilder.append("**[대화 원칙]**\n");
-        promptBuilder.append("1. 사용자의 과거 이야기를 듣고 싶어합니다\n");
-        promptBuilder.append("2. 진심으로 공감하고 관심을 보입니다\n");
-        promptBuilder.append("3. 구체적인 세부사항에 대해 궁금해합니다\n");
-        promptBuilder.append("4. 더 많은 이야기를 듣고 싶어합니다\n");
-        promptBuilder.append("5. 모든 응답은 질문으로 끝나야 합니다\n\n");
-        
-        promptBuilder.append("**[대화 동작 목록(필수 중 2개 고르기)]**\n");
-        promptBuilder.append("- Reflect: 상대 감정을 짧게 비추기(단, conf<0.6이면 완곡).\n");
-        promptBuilder.append("- People: 함께한 사람을 묻기(누구와? 누구 기억나세요?).\n");
-        promptBuilder.append("- Place: 장소를 묻기(어디서? 동네/학교/집?).\n");
-        promptBuilder.append("- Time: 시기/계절/나이를 묻기(언제? 몇 살쯤?).\n");
-        promptBuilder.append("- Activity: 구체 행동/규칙/순서를 묻기(어떻게 하셨어요?).\n");
-        promptBuilder.append("- Sensory: 소리/냄새/맛/촉감 같은 감각 단서 묻기.\n");
-        promptBuilder.append("- ChoiceQ: 선택형(\"A였나요, B였나요?\") 한 번만.\n");
-        promptBuilder.append("- Compare: 그때와 지금의 차이를 부드럽게 묻기.\n\n");
-        
-        promptBuilder.append("**[감정-톤 규칙]**\n");
-        promptBuilder.append("- 기쁨: 밝고 경쾌, 감탄사 1회 허용.\n");
-        promptBuilder.append("- 슬픔/상처: 낮은 톤+안심, ChoiceQ 우선.\n");
-        promptBuilder.append("- 불안/당황: \"괜찮아요, 천천히요\" + 단일 구체질문.\n");
-        promptBuilder.append("- 분노: 공감+정당화 후 사실 질문 1개.\n\n");
-        
-        promptBuilder.append("**[감정 반영 규칙]**\n");
-        promptBuilder.append("- 감정값: ").append(emotionKorean).append("\n");
-        promptBuilder.append("- 첫 문장에서 반드시 감정값에 맞는 공감을 표현한다.\n");
-        promptBuilder.append("- 긍정 감정 → 기쁨을 같이 나누며 즐겁게 반응한다.\n");
-        promptBuilder.append("- 부정 감정 → 위로와 지지를 담아 따뜻하게 공감한다.\n");
-        promptBuilder.append("- 중립 감정 → 관심과 호기심을 담아 자연스럽게 이어간다.\n");
-        promptBuilder.append("- ⚠️ 신뢰도가 60% 미만일 경우, 현재 감정을 '중립'으로 간주하고 감정 언급을 피한다.\n\n");
-        promptBuilder.append("**[감정 정보]**\n");
-        promptBuilder.append("사용자의 현재 감정: '").append(emotionKorean).append("' (신뢰도: ").append(confidencePercent).append("%)\n\n");
-        
-        promptBuilder.append("**[대화 맥락]**\n");
-        if (prevUser != null && !prevUser.trim().isEmpty()) {
-            promptBuilder.append("이전 할머니/할아버지: \"").append(prevUser).append("\"\n");
-        }
-        if (prevSys != null && !prevSys.trim().isEmpty()) {
-            promptBuilder.append("이전 가족: \"").append(prevSys).append("\"\n");
-        }
-        promptBuilder.append("현재 할머니/할아버지: \"").append(currUser).append("\"\n\n");
-        
-        promptBuilder.append("**[응답 지침]**\n");
-        promptBuilder.append("사용자와의 따뜻한 대화를 위해 다음을 지켜주세요:\n\n");
-
-        promptBuilder.append("1. **대화 동작**: 위의 대화 동작 목록에서 반드시 2개를 선택하여 응답에 포함하세요\n");
-        promptBuilder.append("2. **감정별 톤**: 현재 감정에 맞는 톤 규칙을 따라주세요\n");
-        promptBuilder.append("3. **사랑스러운 관심**: 사용자의 이야기에 진심으로 관심을 보여주세요\n");
-        promptBuilder.append("4. **자연스러운 호기심**: 과거 이야기에 대해 자연스럽게 궁금해해주세요\n");
-        promptBuilder.append("5. **구체적 질문**: '어떤', '언제', '어디서', '누구와' 같은 구체적인 질문을 해주세요\n");
-        promptBuilder.append("6. **더 듣고 싶어함**: 더 많은 이야기를 듣고 싶어하는 마음을 표현해주세요\n");
-        promptBuilder.append("7. **가족 같은 톤**: 사랑하는 가족처럼 따뜻하고 애정 어린 톤으로 말해주세요\n");
-        promptBuilder.append("8. **쉬운 단어**: 어려운 단어 대신 쉽고 간단한 단어를 사용해주세요\n");
-        promptBuilder.append("9. **짧은 문장**: 한 문장을 짧게 나누어 말해주세요 (10-15단어 이내)\n");
-        promptBuilder.append("10. **적절한 길이**: 2-3문장으로 구성하여 너무 길지 않게 해주세요\n");
-        promptBuilder.append("11. **질문으로 마무리**: 반드시 응답을 질문으로 끝내주세요\n\n");
-        
-        promptBuilder.append("사용자의 감정과 대화 내용을 고려하여 사랑하는 가족처럼 따뜻하고 애정 어린 응답을 생성해주세요. 반드시 질문으로 마무리해주세요.");
-        
-        
-        // GPT 요청 생성
-        GPTRequest gptRequest = new GPTRequest();
-        gptRequest.setModel(defaultModel);
-        gptRequest.setMax_tokens(defaultMaxTokens);
-        gptRequest.setTemperature(defaultTemperature);
-        gptRequest.setStream(false);
-        
-        // 메시지 구성
-        GPTMessage systemMessage = new GPTMessage("system", promptBuilder.toString());
-        GPTMessage userMessage = new GPTMessage("user", "응답을 생성해줘.");
-        
-        gptRequest.setMessages(List.of(systemMessage, userMessage));
-        
-        // GPT API 호출
-        GPTResponse gptResponse = generateResponse(gptRequest);
-        
-        if (gptResponse.getChoices() == null || gptResponse.getChoices().isEmpty()) {
-            throw new RuntimeException("GPT API 응답에 선택지가 없습니다.");
-        }
-        
-        return gptResponse.getChoices().get(0).getMessage().getContent();
     }
     
     /**

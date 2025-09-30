@@ -92,7 +92,7 @@
         // 카카오 로그인 함수
         function kakaoLogin() {
             // 백엔드에서 카카오 로그인 URL 가져오기
-            fetch('http://localhost:8080/api/auth/kakao/login-url')
+            fetch('/api/auth/kakao/login-url')
                 .then(response => response.json())
                 .then(data => {
                     if (data.loginUrl) {
@@ -162,7 +162,7 @@
             
             if (code) {
                 // 카카오 콜백 처리
-                fetch(`http://localhost:8080/api/auth/kakao/callback?code=${code}`)
+                fetch(`/api/auth/kakao/callback?code=${code}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -189,7 +189,7 @@
             }
             
             // 인증이 필요한 API 호출
-            fetch('http://localhost:8080/api/auth/test/profile', {
+            fetch('/api/auth/test/profile', {
                 method: 'GET',
                 headers: {
                     'Authorization': 'Bearer ' + token,

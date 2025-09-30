@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 @RestController
 @RequestMapping("/api/gpt")
@@ -33,6 +35,9 @@ public class GPTController {
     private GPTService gptService;
     
     @Autowired
+    private GPTServiceNew gptServiceNew;  // 새로운 프롬프트 서비스
+    
+    @Autowired
     private ConversationContextService conversationContextService;
     
     @Autowired
@@ -41,9 +46,14 @@ public class GPTController {
     @Autowired
     private ConversationMessageService conversationMessageService;
     
-    
     @Autowired
     private TTSService ttsService;
+    
+    @Autowired
+    private com.chimaenono.dearmind.conversation.ConversationService conversationService;
+    
+    @Autowired
+    private com.chimaenono.dearmind.question.QuestionRepository questionRepository;
     
     @PostMapping("/generate")
     @Operation(summary = "감정 기반 대화 생성", 
@@ -57,14 +67,47 @@ public class GPTController {
     public ResponseEntity<ConversationGenerateResponse> generateConversation(
             @Valid @RequestBody ConversationGenerateRequest request) {
         try {
-            // 대화 컨텍스트 조회
+            // 1. 대화 컨텍스트 조회
             var contextResponse = conversationContextService.getConversationContext(request.getConversationMessageId());
             if (!contextResponse.getSuccess()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ConversationGenerateResponse.error("대화 컨텍스트를 찾을 수 없습니다: " + contextResponse.getMessage()));
             }
             
-            // 감정 분석 데이터 조회
+            // 2. Conversation 조회
+            Long conversationId = contextResponse.getConversationId();
+            Optional<com.chimaenono.dearmind.conversation.Conversation> conversationOpt = 
+                    conversationService.getConversationById(conversationId);
+            
+            if (conversationOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ConversationGenerateResponse.error("대화 세션을 찾을 수 없습니다"));
+            }
+            
+            com.chimaenono.dearmind.conversation.Conversation conversation = conversationOpt.get();
+            
+            // 3. topicRoot 조회 (Question에서)
+            String topicRoot = "";
+            Optional<com.chimaenono.dearmind.question.Question> questionOpt = 
+                    questionRepository.findById(conversation.getQuestionId());
+            if (questionOpt.isPresent()) {
+                topicRoot = questionOpt.get().getContent();
+            }
+            
+            // 4. stepIndex 계산 (해당 conversation의 사용자 메시지 수)
+            int stepIndex = conversationMessageService.countUserMessagesByConversationId(conversationId);
+            if (stepIndex == 0) stepIndex = 1; // 최소 1
+            
+            // 5. ruleStep 계산
+            int ruleStep = ((stepIndex - 1) % 3) + 1;
+            
+            // 6. facetHistory 조회
+            List<String> facetHistory = conversation.getFacetHistory();
+            
+            // 7. targetAnchor 조회
+            Map<String, String> targetAnchor = conversation.getTargetAnchor();
+            
+            // 8. 감정 분석 데이터 조회
             Optional<UserEmotionAnalysis> emotionAnalysisOpt = userEmotionAnalysisRepository
                     .findByConversationMessageId(request.getConversationMessageId());
             
@@ -77,20 +120,43 @@ public class GPTController {
                 confidence = analysis.getCombinedConfidence() != null ? analysis.getCombinedConfidence() : 0.5;
             }
             
-            // GPT API를 통한 응답 생성
-            String aiResponse = gptService.generateEmotionBasedResponse(
+            // 9. GPT API 호출 (새로운 서비스 사용)
+            Map<String, Object> gptResponse = gptServiceNew.generateEmotionBasedResponse(
                     emotion,
                     confidence,
                     contextResponse.getPrevUser(),
                     contextResponse.getPrevSys(),
-                    contextResponse.getCurrUser()
+                    contextResponse.getCurrUser(),
+                    topicRoot,
+                    stepIndex,
+                    ruleStep,
+                    facetHistory,
+                    targetAnchor
             );
             
-            // AI 응답을 ConversationMessage에 저장
-            ConversationMessageResponse savedAIMessage = conversationMessageService.saveAIMessage(
-                    contextResponse.getConversationId(), aiResponse);
+            // 10. 응답에서 데이터 추출
+            String aiResponse = (String) gptResponse.get("text");
+            @SuppressWarnings("unchecked")
+            List<String> updatedFacetHistory = (List<String>) gptResponse.get("facet_history");
             
-            // TTS 변환 (파일 저장 없이 Base64로 반환)
+            // 11. step_index=1일 때만 target_anchor 저장
+            if (stepIndex == 1 && gptResponse.containsKey("target_anchor")) {
+                @SuppressWarnings("unchecked")
+                Map<String, String> extractedAnchor = (Map<String, String>) gptResponse.get("target_anchor");
+                conversation.setTargetAnchor(extractedAnchor);
+            }
+            
+            // 12. facetHistory 업데이트
+            conversation.setFacetHistory(updatedFacetHistory);
+            
+            // 13. Conversation 저장
+            conversationService.saveConversation(conversation);
+            
+            // 14. AI 응답을 ConversationMessage에 저장
+            ConversationMessageResponse savedAIMessage = conversationMessageService.saveAIMessage(
+                    conversationId, aiResponse);
+            
+            // 15. TTS 변환 (파일 저장 없이 Base64로 반환)
             String audioBase64 = null;
             try {
                 TTSRequest ttsRequest = new TTSRequest();
@@ -118,6 +184,7 @@ public class GPTController {
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ConversationGenerateResponse.error("대화 생성 중 오류가 발생했습니다: " + e.getMessage()));
         }
@@ -168,10 +235,12 @@ public class GPTController {
                 }
             }
             
-            // generateEmotionBasedResponse 함수 직접 호출
-            String aiResponse = gptService.generateEmotionBasedResponse(
-                emotion, confidence, prevUser, prevSys, userText
+            // generateEmotionBasedResponse 함수 직접 호출 (테스트용 - 더미 값 사용)
+            Map<String, Object> gptResponseMap = gptService.generateEmotionBasedResponse(
+                emotion, confidence, prevUser, prevSys, userText,
+                "테스트 주제", 1, 1, new ArrayList<>(), new HashMap<>()
             );
+            String aiResponse = (String) gptResponseMap.get("text");
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -306,7 +375,11 @@ public class GPTController {
             @Parameter(description = "현재 사용자 발화", example = "공부한 만큼 결과가 안 나와서 실망이 커요.") 
             @RequestParam(defaultValue = "공부한 만큼 결과가 안 나와서 실망이 커요.") String currUser) {
         try {
-            String aiResponse = gptService.generateEmotionBasedResponse(emotion, confidence, prevUser, prevSys, currUser);
+            Map<String, Object> gptResponseMap = gptService.generateEmotionBasedResponse(
+                emotion, confidence, prevUser, prevSys, currUser,
+                "테스트 주제", 1, 1, new ArrayList<>(), new HashMap<>()
+            );
+            String aiResponse = (String) gptResponseMap.get("text");
             
             // TTS 변환 (파일 저장 없이 Base64로 반환)
             String audioBase64 = null;
@@ -385,27 +458,83 @@ public class GPTController {
             @Parameter(description = "이전 AI 발화", example = "정말 힘들었겠어요.") 
             @RequestParam(required = false) String prevSys,
             @Parameter(description = "현재 사용자 발화", example = "공부한 만큼 결과가 안 나와서 실망이 커요.") 
-            @RequestParam String currUser) {
+            @RequestParam String currUser,
+            @Parameter(description = "대화 주제 (선택사항)", example = "어린 시절 가장 행복했던 순간") 
+            @RequestParam(required = false, defaultValue = "과거의 소중한 기억") String topicRoot,
+            @Parameter(description = "대화 턴 번호 (선택사항)", example = "1") 
+            @RequestParam(required = false, defaultValue = "1") Integer stepIndex,
+            @Parameter(description = "사용된 세부키 히스토리 (선택사항, 쉼표로 구분)", example = "where,who") 
+            @RequestParam(required = false) String facetHistory,
+            @Parameter(description = "추출된 앵커 타입 (선택사항)", example = "place") 
+            @RequestParam(required = false) String targetAnchorType,
+            @Parameter(description = "추출된 앵커 텍스트 (선택사항)", example = "학교") 
+            @RequestParam(required = false) String targetAnchorText) {
         try {
+            // stepIndex 유효성 검사 (최소 1)
+            if (stepIndex == null || stepIndex < 1) {
+                stepIndex = 1;
+            }
+            
+            // ruleStep 계산 (1, 2, 3 순환)
+            int ruleStep = ((stepIndex - 1) % 3) + 1;
+            
+            // facetHistory 파싱 (쉼표로 구분된 문자열을 리스트로 변환)
+            List<String> facetHistoryList = new ArrayList<>();
+            if (facetHistory != null && !facetHistory.trim().isEmpty()) {
+                facetHistoryList = Arrays.asList(facetHistory.split(","));
+            }
+            
+            // targetAnchor 구성
+            Map<String, String> targetAnchor = new HashMap<>();
+            if (targetAnchorType != null && targetAnchorText != null) {
+                targetAnchor.put("type", targetAnchorType);
+                targetAnchor.put("text", targetAnchorText);
+            }
+            
             // GPT API를 통한 응답 생성 (저장, TTS 없이 단순 생성만)
-            String aiResponse = gptService.generateEmotionBasedResponse(
+            Map<String, Object> gptResponseMap = gptService.generateEmotionBasedResponse(
                 emotion, 
                 confidence, 
-                prevUser, 
-                prevSys, 
-                currUser
+                prevUser != null ? prevUser : "", 
+                prevSys != null ? prevSys : "", 
+                currUser,
+                topicRoot != null ? topicRoot : "과거의 소중한 기억",
+                stepIndex,
+                ruleStep,
+                facetHistoryList,
+                targetAnchor
             );
+            
+            String aiResponse = (String) gptResponseMap.get("text");
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("aiResponse", aiResponse);
             response.put("emotion", emotion);
             response.put("confidence", confidence);
+            response.put("topicRoot", topicRoot);
+            response.put("stepIndex", stepIndex);
+            response.put("ruleStep", ruleStep);
             response.put("timestamp", java.time.LocalDateTime.now());
+            
+            // 전체 GPT 응답 정보도 포함 (디버깅용)
+            if (gptResponseMap.containsKey("facet_key_used")) {
+                response.put("facet_key_used", gptResponseMap.get("facet_key_used"));
+            }
+            if (gptResponseMap.containsKey("facet_history")) {
+                response.put("facet_history", gptResponseMap.get("facet_history"));
+            }
+            if (gptResponseMap.containsKey("target_anchor")) {
+                response.put("target_anchor", gptResponseMap.get("target_anchor"));
+            }
+            if (gptResponseMap.containsKey("next_step_index")) {
+                response.put("next_step_index", gptResponseMap.get("next_step_index"));
+            }
             
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
+            e.printStackTrace();
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("success", false);
             errorResponse.put("error", "대화 생성 중 오류가 발생했습니다: " + e.getMessage());

@@ -117,4 +117,12 @@ public class ConversationMessageService {
         // Response DTO로 변환하여 반환
         return ConversationMessageResponse.from(savedMessage);
     }
+    
+    /**
+     * 특정 대화 세션의 사용자 메시지 개수를 카운트
+     */
+    public int countUserMessagesByConversationId(Long conversationId) {
+        return (int) conversationMessageRepository.countByConversationIdAndSenderType(
+            conversationId, ConversationMessage.SenderType.USER);
+    }
 }

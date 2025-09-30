@@ -213,14 +213,18 @@
     </div>
 
     <script>
-        const KOBERT_API_URL = 'http://127.0.0.1:8001/predict_emotion';
+        const KOBERT_API_URL = 'http://35.202.26.247:8001/predict_emotion';
         let conversationCount = 0;
         
         // 대화 히스토리 관리
         let conversationHistory = {
             prevUser: '',
             prevSys: '',
-            currentUser: ''
+            currentUser: '',
+            stepIndex: 1,           // 대화 턴 번호
+            topicRoot: '과거의 소중한 기억',  // 대화 주제
+            targetAnchor: null,     // 추출된 앵커
+            facetHistory: []        // 사용된 세부키 히스토리
         };
 
         // 회상 요법 질문 리스트
@@ -262,7 +266,11 @@
             conversationHistory = {
                 prevUser: '',
                 prevSys: '',
-                currentUser: ''
+                currentUser: '',
+                stepIndex: 1,
+                topicRoot: '과거의 소중한 기억',
+                targetAnchor: null,
+                facetHistory: []
             };
             
             // 대화 로그에 AI 질문 추가
@@ -521,10 +529,19 @@
                     confidence: confidence,
                     prevUser: conversationHistory.prevUser,
                     prevSys: conversationHistory.prevSys,
-                    currUser: userInput
+                    currUser: userInput,
+                    topicRoot: conversationHistory.topicRoot,
+                    stepIndex: conversationHistory.stepIndex,
+                    // facetHistory를 쉼표로 구분된 문자열로 변환
+                    facetHistory: conversationHistory.facetHistory.join(','),
+                    // targetAnchor를 개별 파라미터로 전달
+                    targetAnchorType: conversationHistory.targetAnchor?.type || '',
+                    targetAnchorText: conversationHistory.targetAnchor?.text || ''
                 };
                 
                 console.log('GPT API 요청 데이터:', requestData);
+                console.log('- facetHistory (array):', conversationHistory.facetHistory);
+                console.log('- targetAnchor:', conversationHistory.targetAnchor);
                 
                 // GPT API 호출
                 const response = await fetch('/api/gpt/generate-simple', {
@@ -568,7 +585,31 @@
                     conversationHistory.prevSys = result.aiResponse;
                     conversationHistory.currentUser = '';
                     
-                    console.log('대화 히스토리 업데이트:', conversationHistory);
+                    // stepIndex 증가 (다음 턴)
+                    conversationHistory.stepIndex = result.next_step_index || (conversationHistory.stepIndex + 1);
+                    
+                    // target_anchor 저장 (stepIndex=1일 때만 반환됨)
+                    if (result.target_anchor) {
+                        conversationHistory.targetAnchor = result.target_anchor;
+                        console.log('✨ Target Anchor 추출됨:', result.target_anchor);
+                    }
+                    
+                    // facet_history 업데이트 (백엔드에서 관리된 히스토리 사용)
+                    if (result.facet_history && Array.isArray(result.facet_history)) {
+                        conversationHistory.facetHistory = result.facet_history;
+                        console.log('📝 Facet History 업데이트:', result.facet_history);
+                    } else if (result.facet_key_used) {
+                        // 백엔드 응답에 facet_history가 없으면 직접 추가
+                        if (!conversationHistory.facetHistory.includes(result.facet_key_used)) {
+                            conversationHistory.facetHistory.push(result.facet_key_used);
+                        }
+                    }
+                    
+                    console.log('🔄 대화 히스토리 업데이트:', conversationHistory);
+                    console.log('  └─ stepIndex:', conversationHistory.stepIndex);
+                    console.log('  └─ ruleStep:', result.ruleStep);
+                    console.log('  └─ facet_key_used:', result.facet_key_used);
+                    console.log('  └─ facetHistory:', conversationHistory.facetHistory);
                 } else {
                     throw new Error(result.error || 'GPT 응답 생성 실패');
                 }
@@ -670,7 +711,11 @@
             conversationHistory = {
                 prevUser: '',
                 prevSys: '',
-                currentUser: ''
+                currentUser: '',
+                stepIndex: 1,
+                topicRoot: '과거의 소중한 기억',
+                targetAnchor: null,
+                facetHistory: []
             };
             
             console.log('대화 히스토리 초기화:', conversationHistory);

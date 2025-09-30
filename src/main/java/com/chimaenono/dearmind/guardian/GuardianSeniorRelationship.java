@@ -1,5 +1,6 @@
 package com.chimaenono.dearmind.guardian;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -26,11 +27,13 @@ public class GuardianSeniorRelationship {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "guardian_id", nullable = false)
     @Schema(description = "보호자 사용자")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User guardian;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "senior_id", nullable = false)
     @Schema(description = "시니어 사용자")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User senior;
 
     @Enumerated(EnumType.STRING)

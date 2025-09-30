@@ -80,10 +80,10 @@ public class STTController {
     })
     public ResponseEntity<STTResponse> transcribeRealtime(
         @Parameter(description = "Base64 인코딩된 오디오 데이터")
-        @RequestParam String audioData
+        @RequestBody STTRequest request
     ) {
         try {
-            STTResponse response = sttService.transcribeRealtime(audioData);
+            STTResponse response = sttService.transcribeRealtime(request.getAudioData());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             STTResponse errorResponse = new STTResponse(

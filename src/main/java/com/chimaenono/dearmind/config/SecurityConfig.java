@@ -91,7 +91,9 @@ public class SecurityConfig {
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
             "http://127.0.0.1:8081",
-            "http://127.0.0.1:8082"
+            "http://127.0.0.1:8082",
+            "https://seniordigitalalbum.github.io",  // GitHub Pages 배포 주소
+            "https://seniordigitalalbum.github.io/frontend_mobile"  // 프론트엔드 배포 주소
         ));
         
         // 허용할 HTTP 메서드

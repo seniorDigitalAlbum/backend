@@ -35,7 +35,10 @@ public class SwaggerConfig implements WebMvcConfigurer {
                                 .description("Local Development Server"),
                         new Server()
                                 .url("http://172.30.1.72:8080")
-                                .description("Local Network Server")
+                                .description("Local Network Server"),
+                        new Server()
+                                .url("https://dearmind-backend.onrender.com")
+                                .description("Production Server (Render)")
                 ));
     }
 

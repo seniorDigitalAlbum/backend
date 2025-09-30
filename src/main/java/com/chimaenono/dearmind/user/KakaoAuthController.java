@@ -108,6 +108,7 @@ public class KakaoAuthController {
                 "redirect_uri=" + redirectUri + "&" +
                 "response_type=code&" +
                 "state=" + state + "&" + // state 파라미터 추가
+                "prompt=select_account&" + // 계정 선택 강제
                 "scope=name,profile_nickname,profile_image,gender,phone_number";
 
         Map<String, String> response = new HashMap<>();

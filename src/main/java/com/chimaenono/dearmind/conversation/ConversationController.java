@@ -350,6 +350,69 @@ public class ConversationController {
         return ResponseEntity.ok("Conversation service is running");
     }
     
+    @GetMapping("/guardian/{guardianId}/seniors/conversations")
+    @Operation(summary = "보호자의 연결된 시니어들 대화 목록 조회", description = "보호자가 연결된 모든 시니어들의 대화 목록을 조회합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "대화 목록 조회 성공"),
+        @ApiResponse(responseCode = "404", description = "보호자를 찾을 수 없음"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<List<Conversation>> getGuardianSeniorsConversations(
+            @Parameter(description = "보호자 ID", example = "1") @PathVariable Long guardianId) {
+        
+        try {
+            List<Conversation> conversations = conversationService.getGuardianSeniorsConversations(guardianId);
+            return ResponseEntity.ok(conversations);
+        } catch (RuntimeException e) {
+            log.error("보호자의 연결된 시니어들 대화 목록 조회 실패: guardianId={}, error={}", guardianId, e.getMessage());
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
+    @GetMapping("/senior/{seniorId}/conversations")
+    @Operation(summary = "특정 시니어의 대화 목록 조회", description = "보호자가 연결된 특정 시니어의 대화 목록을 조회합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "대화 목록 조회 성공"),
+        @ApiResponse(responseCode = "403", description = "접근 권한 없음"),
+        @ApiResponse(responseCode = "404", description = "시니어를 찾을 수 없음"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<List<Conversation>> getSeniorConversations(
+            @Parameter(description = "시니어 ID", example = "2") @PathVariable Long seniorId,
+            @Parameter(description = "보호자 ID", example = "1") @RequestParam Long guardianId) {
+        
+        try {
+            List<Conversation> conversations = conversationService.getSeniorConversations(seniorId, guardianId);
+            return ResponseEntity.ok(conversations);
+        } catch (RuntimeException e) {
+            log.error("시니어 대화 목록 조회 실패: seniorId={}, guardianId={}, error={}", seniorId, guardianId, e.getMessage());
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
+    @GetMapping("/senior/{seniorId}/conversations/{conversationId}")
+    @Operation(summary = "특정 시니어의 특정 대화 조회", description = "보호자가 연결된 특정 시니어의 특정 대화를 조회합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "대화 조회 성공"),
+        @ApiResponse(responseCode = "403", description = "접근 권한 없음"),
+        @ApiResponse(responseCode = "404", description = "대화를 찾을 수 없음"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<Conversation> getSeniorSpecificConversation(
+            @Parameter(description = "시니어 ID", example = "2") @PathVariable Long seniorId,
+            @Parameter(description = "대화 ID", example = "5") @PathVariable Long conversationId,
+            @Parameter(description = "보호자 ID", example = "1") @RequestParam Long guardianId) {
+        
+        try {
+            Conversation conversation = conversationService.getSeniorSpecificConversation(seniorId, conversationId, guardianId);
+            return ResponseEntity.ok(conversation);
+        } catch (RuntimeException e) {
+            log.error("시니어 특정 대화 조회 실패: seniorId={}, conversationId={}, guardianId={}, error={}", 
+                    seniorId, conversationId, guardianId, e.getMessage());
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
     
     
     /**

@@ -24,16 +24,14 @@ public class GuardianSeniorRelationship {
     @Schema(description = "관계 고유 ID", example = "1")
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "guardian_id", nullable = false)
     @Schema(description = "보호자 사용자")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User guardian;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "senior_id", nullable = false)
     @Schema(description = "시니어 사용자")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User senior;
 
     @Enumerated(EnumType.STRING)

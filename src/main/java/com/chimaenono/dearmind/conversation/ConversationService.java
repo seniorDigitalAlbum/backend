@@ -12,6 +12,7 @@ import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysis;
 import com.chimaenono.dearmind.userEmotionAnalysis.UserEmotionAnalysisRepository;
 import com.chimaenono.dearmind.camera.CameraService;
 import com.chimaenono.dearmind.microphone.MicrophoneService;
+import com.chimaenono.dearmind.guardian.GuardianSeniorRelationshipService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.ArrayList;
 
 @Service
 @Tag(name = "Conversation Service", description = "대화 세션 관리 서비스")
@@ -45,6 +47,9 @@ public class ConversationService {
     @Autowired
     @Lazy
     private MicrophoneService microphoneService;
+    
+    @Autowired
+    private GuardianSeniorRelationshipService relationshipService;
     
     @Operation(summary = "통합 대화 시작", description = "카메라 세션, 마이크 세션, 대화방을 통합으로 생성합니다")
     public ConversationStartResponse startConversation(ConversationStartRequest request, Long userId) {
@@ -424,5 +429,59 @@ public class ConversationService {
             conversation.setEmotionFlow(emotionFlow);
             conversationRepository.save(conversation);
         }
+    }
+    
+    @Operation(summary = "보호자의 연결된 시니어들 대화 목록 조회", description = "보호자가 연결된 모든 시니어들의 대화 목록을 조회합니다")
+    public List<Conversation> getGuardianSeniorsConversations(Long guardianId) {
+        // 1. 보호자의 승인된 관계 조회
+        List<com.chimaenono.dearmind.guardian.GuardianSeniorRelationship> relationships = 
+            relationshipService.getApprovedGuardianRelationships(guardianId);
+        
+        // 2. 각 시니어의 대화 목록 조회
+        List<Conversation> allConversations = new ArrayList<>();
+        for (com.chimaenono.dearmind.guardian.GuardianSeniorRelationship relationship : relationships) {
+            Long seniorId = relationship.getSenior().getId();
+            List<Conversation> seniorConversations = conversationRepository.findByUserIdOrderByCreatedAtDesc(seniorId);
+            allConversations.addAll(seniorConversations);
+        }
+        
+        // 3. 생성일 기준으로 정렬
+        allConversations.sort((c1, c2) -> c2.getCreatedAt().compareTo(c1.getCreatedAt()));
+        
+        return allConversations;
+    }
+    
+    @Operation(summary = "특정 시니어의 대화 목록 조회", description = "보호자가 연결된 특정 시니어의 대화 목록을 조회합니다")
+    public List<Conversation> getSeniorConversations(Long seniorId, Long guardianId) {
+        // 1. 보호자-시니어 관계 확인
+        if (!relationshipService.relationshipExists(guardianId, seniorId)) {
+            throw new RuntimeException("보호자와 시니어 간의 연결 관계가 없습니다");
+        }
+        
+        // 2. 시니어의 대화 목록 조회
+        return conversationRepository.findByUserIdOrderByCreatedAtDesc(seniorId);
+    }
+    
+    @Operation(summary = "특정 시니어의 특정 대화 조회", description = "보호자가 연결된 특정 시니어의 특정 대화를 조회합니다")
+    public Conversation getSeniorSpecificConversation(Long seniorId, Long conversationId, Long guardianId) {
+        // 1. 보호자-시니어 관계 확인
+        if (!relationshipService.relationshipExists(guardianId, seniorId)) {
+            throw new RuntimeException("보호자와 시니어 간의 연결 관계가 없습니다");
+        }
+        
+        // 2. 대화 조회
+        Optional<Conversation> conversationOpt = conversationRepository.findById(conversationId);
+        if (conversationOpt.isEmpty()) {
+            throw new RuntimeException("대화를 찾을 수 없습니다");
+        }
+        
+        Conversation conversation = conversationOpt.get();
+        
+        // 3. 대화가 해당 시니어의 것인지 확인
+        if (!conversation.getUserId().equals(seniorId)) {
+            throw new RuntimeException("해당 시니어의 대화가 아닙니다");
+        }
+        
+        return conversation;
     }
 } 

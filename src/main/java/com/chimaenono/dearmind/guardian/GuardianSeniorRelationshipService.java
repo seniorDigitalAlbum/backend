@@ -161,6 +161,7 @@ public class GuardianSeniorRelationshipService {
      * @param guardianId 보호자 ID
      * @return 보호자의 관계 목록
      */
+    @Transactional(readOnly = true)
     public List<GuardianSeniorRelationship> getGuardianRelationships(Long guardianId) {
         log.info("보호자 관계 조회: guardianId={}", guardianId);
         return relationshipRepository.findByGuardianId(guardianId);
@@ -171,6 +172,7 @@ public class GuardianSeniorRelationshipService {
      * @param seniorId 시니어 ID
      * @return 시니어의 관계 목록
      */
+    @Transactional(readOnly = true)
     public List<GuardianSeniorRelationship> getSeniorRelationships(Long seniorId) {
         log.info("시니어 관계 조회: seniorId={}", seniorId);
         return relationshipRepository.findBySeniorId(seniorId);
@@ -181,6 +183,7 @@ public class GuardianSeniorRelationshipService {
      * @param guardianId 보호자 ID
      * @return 보호자의 승인된 관계 목록
      */
+    @Transactional(readOnly = true)
     public List<GuardianSeniorRelationship> getApprovedGuardianRelationships(Long guardianId) {
         log.info("보호자 승인된 관계 조회: guardianId={}", guardianId);
         return relationshipRepository.findApprovedByGuardianId(guardianId);
@@ -191,6 +194,7 @@ public class GuardianSeniorRelationshipService {
      * @param seniorId 시니어 ID
      * @return 시니어의 승인된 관계 목록
      */
+    @Transactional(readOnly = true)
     public List<GuardianSeniorRelationship> getApprovedSeniorRelationships(Long seniorId) {
         log.info("시니어 승인된 관계 조회: seniorId={}", seniorId);
         return relationshipRepository.findApprovedBySeniorId(seniorId);
@@ -201,6 +205,7 @@ public class GuardianSeniorRelationshipService {
      * @param seniorId 시니어 ID
      * @return 시니어의 대기 중인 관계 목록
      */
+    @Transactional(readOnly = true)
     public List<GuardianSeniorRelationship> getPendingSeniorRelationships(Long seniorId) {
         log.info("시니어 대기 중인 관계 조회: seniorId={}", seniorId);
         return relationshipRepository.findPendingBySeniorId(seniorId);

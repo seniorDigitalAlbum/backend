@@ -138,6 +138,7 @@ public class GPTServiceNew {
         promptBuilder.append("{\n");
         promptBuilder.append("  \"text\": \"<문장형 응답>\",\n");
         promptBuilder.append("  \"facet_key_used\": \"<enum>\",\n");
+        promptBuilder.append("  \"facet_value\": \"<추출된 5~15자 구절>\",\n");
         promptBuilder.append("  \"facet_history\": [\"...\",\"...\"],\n");
         promptBuilder.append("  \"next_step_index\": <step_index + 1>");
         if (stepIndex == 1) {
@@ -147,6 +148,19 @@ public class GPTServiceNew {
             promptBuilder.append("  }");
         }
         promptBuilder.append("\n}\n\n");
+        
+        promptBuilder.append("[facet_value 추출 규칙]\n");
+        promptBuilder.append("- 사용자의 현재 발화(curr_user)에서 facet_key_used에 해당하는 핵심 구절을 5~15자로 추출\n");
+        promptBuilder.append("- 명사구 우선, 조사 제거 가능 (예: \"교실에서\" → \"교실\")\n");
+        promptBuilder.append("- 새로운 사실 창작 금지, 사용자 원문 그대로 또는 최소 가공\n");
+        promptBuilder.append("- 존댓말 금지, 명사형으로 추출\n");
+        promptBuilder.append("- 해당 정보가 없으면 빈 문자열 \"\"\n");
+        promptBuilder.append("- 예시:\n");
+        promptBuilder.append("  * facet_key_used=\"where\", curr_user=\"학교 운동장에서 놀았어요\" → facet_value=\"학교 운동장\"\n");
+        promptBuilder.append("  * facet_key_used=\"who\", curr_user=\"친구 철수랑 같이 갔어요\" → facet_value=\"친구 철수\"\n");
+        promptBuilder.append("  * facet_key_used=\"when\", curr_user=\"여름방학 때였어요\" → facet_value=\"여름방학\"\n");
+        promptBuilder.append("  * facet_key_used=\"moment\", curr_user=\"선생님이 칭찬해주셔서 기뻤어요\" → facet_value=\"선생님 칭찬\"\n");
+        promptBuilder.append("  * facet_key_used=\"quote\", curr_user=\"'잘했다'고 말씀하셨어요\" → facet_value=\"잘했다\"\n\n");
         
         promptBuilder.append("**[CRITICAL: facet_key_used 선택 규칙]**\n");
         promptBuilder.append("현재 rule_step=").append(ruleStep).append("이므로, facet_key_used는 **반드시** 아래 중 하나여야 합니다:\n");

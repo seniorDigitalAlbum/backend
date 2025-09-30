@@ -44,8 +44,17 @@ public class DiaryPlanService {
             // 3. EmotionFlow 파싱
             EmotionFlow flow = parseEmotionFlow(conversation.getEmotionFlow());
             
-            // 4. Summary 파싱
-            Summary summary = parseSummary(conversation.getSummary());
+            // 4. RDP 데이터 조회 및 Summary로 변환
+            Map<String, Object> rdpData = conversation.getRdpData();
+            Summary summary;
+            if (!rdpData.isEmpty()) {
+                summary = convertRdpToSummary(rdpData);
+            } else if (conversation.getSummary() != null) {
+                // 하위 호환성: 기존 summary가 있으면 사용
+                summary = parseSummary(conversation.getSummary());
+            } else {
+                summary = createDefaultSummary();
+            }
             
             // 5. DiaryPlan 생성
             return buildDiaryPlan(flow, summary, userMessages);
@@ -285,5 +294,69 @@ public class DiaryPlanService {
         flow.setSegments(List.of(segment));
         
         return flow;
+    }
+    
+    /**
+     * RDP 데이터를 Summary 형식으로 변환
+     */
+    @SuppressWarnings("unchecked")
+    private Summary convertRdpToSummary(Map<String, Object> rdpData) {
+        Summary summary = new Summary();
+        
+        Map<String, String> anchor = (Map<String, String>) rdpData.getOrDefault("anchor", Map.of());
+        Map<String, String> scene = (Map<String, String>) rdpData.getOrDefault("scene", Map.of());
+        Map<String, String> highlight = (Map<String, String>) rdpData.getOrDefault("highlight", Map.of());
+        Map<String, String> meaning = (Map<String, String>) rdpData.getOrDefault("meaning", Map.of());
+        
+        String anchorText = anchor.getOrDefault("text", "");
+        summary.setSituation(anchorText.isEmpty() ? "대화 내용" : anchorText + "에 대한 대화");
+        
+        List<String> events = new ArrayList<>();
+        if (!scene.getOrDefault("where", "").isEmpty()) events.add(scene.get("where") + "에서의 추억");
+        if (!highlight.getOrDefault("moment", "").isEmpty()) events.add(highlight.get("moment"));
+        summary.setEvents(events);
+        
+        Summary.Anchors anchors = new Summary.Anchors();
+        anchors.setPeople(scene.getOrDefault("who", "").isEmpty() ? List.of() : List.of(scene.get("who")));
+        anchors.setPlace(scene.getOrDefault("where", "").isEmpty() ? List.of() : List.of(scene.get("where")));
+        anchors.setEra(scene.getOrDefault("when", "1980년대"));
+        anchors.setObjects(List.of());
+        summary.setAnchors(anchors);
+        
+        Summary.Highlights highlights = new Summary.Highlights();
+        highlights.setBestMoment(highlight.getOrDefault("moment", ""));
+        highlights.setHardMoment("");
+        highlights.setInsight(meaning.getOrDefault("meaning", ""));
+        summary.setHighlights(highlights);
+        
+        String quote = highlight.getOrDefault("quote", "");
+        summary.setQuotes(quote.isEmpty() ? List.of() : List.of(quote));
+        
+        return summary;
+    }
+    
+    /**
+     * 기본 Summary 생성
+     */
+    private Summary createDefaultSummary() {
+        Summary summary = new Summary();
+        summary.setSituation("대화 내용");
+        summary.setEvents(List.of());
+        
+        Summary.Anchors anchors = new Summary.Anchors();
+        anchors.setEra("1980년대");
+        anchors.setPeople(List.of());
+        anchors.setPlace(List.of());
+        anchors.setObjects(List.of());
+        summary.setAnchors(anchors);
+        
+        Summary.Highlights highlights = new Summary.Highlights();
+        highlights.setBestMoment("");
+        highlights.setHardMoment("");
+        highlights.setInsight("");
+        summary.setHighlights(highlights);
+        
+        summary.setQuotes(List.of());
+        return summary;
     }
 }

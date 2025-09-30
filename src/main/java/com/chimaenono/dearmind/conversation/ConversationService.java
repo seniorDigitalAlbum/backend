@@ -363,15 +363,7 @@ public class ConversationService {
         return summary;
     }
     
-    @Operation(summary = "대화 요약 저장", description = "생성된 대화 요약을 저장합니다")
-    public void saveConversationSummary(Long conversationId, String summary) {
-        Optional<Conversation> conversationOpt = conversationRepository.findById(conversationId);
-        if (conversationOpt.isPresent()) {
-            Conversation conversation = conversationOpt.get();
-            conversation.setSummary(summary);
-            conversationRepository.save(conversation);
-        }
-    }
+    // 대화 요약 저장 메서드 삭제됨 - RDP 저장으로 대체 예정
     
     @Operation(summary = "대화 일기 저장", description = "생성된 일기를 저장합니다")
     public void saveConversationDiary(Long conversationId, String diary) {

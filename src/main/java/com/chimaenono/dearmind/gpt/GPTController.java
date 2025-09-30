@@ -138,6 +138,8 @@ public class GPTController {
             String aiResponse = (String) gptResponse.get("text");
             @SuppressWarnings("unchecked")
             List<String> updatedFacetHistory = (List<String>) gptResponse.get("facet_history");
+            String facetKeyUsed = (String) gptResponse.get("facet_key_used");
+            String facetValue = (String) gptResponse.get("facet_value");
             
             // 11. step_index=1일 때만 target_anchor 저장
             if (stepIndex == 1 && gptResponse.containsKey("target_anchor")) {
@@ -149,7 +151,10 @@ public class GPTController {
             // 12. facetHistory 업데이트
             conversation.setFacetHistory(updatedFacetHistory);
             
-            // 13. Conversation 저장
+            // 13. RDP 데이터 업데이트
+            updateRdpData(conversation, facetKeyUsed, facetValue);
+            
+            // 14. Conversation 저장
             conversationService.saveConversation(conversation);
             
             // 14. AI 응답을 ConversationMessage에 저장
@@ -412,35 +417,7 @@ public class GPTController {
         }
     }
     
-    @PostMapping("/conversation-summary")
-    @Operation(summary = "대화 내용 요약", description = "GPT를 사용하여 대화 내용을 요약합니다")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "대화 요약 성공"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "404", description = "대화 세션을 찾을 수 없음"),
-        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
-    })
-    public ResponseEntity<ConversationSummaryResponse> generateConversationSummary(
-            @Valid @RequestBody ConversationSummaryRequest request) {
-        try {
-            String summary = gptService.generateConversationSummary(
-                request.getConversationId(), 
-                request.getSummaryLength()
-            );
-            
-            ConversationSummaryResponse response = ConversationSummaryResponse.success(
-                request.getConversationId(),
-                summary,
-                request.getSummaryLength()
-            );
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ConversationSummaryResponse.error("대화 요약 중 오류가 발생했습니다: " + e.getMessage()));
-        }
-    }
+    // 대화 요약 API 삭제됨 - RDP 추출로 대체 예정
     
     @PostMapping("/generate-simple")
     @Operation(summary = "KoBERT 테스트용 단순 대화 생성", 
@@ -521,6 +498,9 @@ public class GPTController {
             if (gptResponseMap.containsKey("facet_key_used")) {
                 response.put("facet_key_used", gptResponseMap.get("facet_key_used"));
             }
+            if (gptResponseMap.containsKey("facet_value")) {
+                response.put("facet_value", gptResponseMap.get("facet_value"));
+            }
             if (gptResponseMap.containsKey("facet_history")) {
                 response.put("facet_history", gptResponseMap.get("facet_history"));
             }
@@ -542,5 +522,87 @@ public class GPTController {
             
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
+    }
+    
+    /**
+     * RDP 데이터 업데이트
+     * facet_key_used와 facet_value를 RDP 구조에 맞게 저장
+     */
+    private void updateRdpData(com.chimaenono.dearmind.conversation.Conversation conversation, 
+                               String facetKey, String facetValue) {
+        if (facetKey == null || facetValue == null || facetValue.trim().isEmpty()) {
+            return;
+        }
+        
+        // 기존 RDP 데이터 조회 (없으면 초기화)
+        Map<String, Object> rdpData = conversation.getRdpData();
+        if (rdpData.isEmpty()) {
+            rdpData = initializeRdpStructure(conversation.getTargetAnchor());
+        }
+        
+        // facet_key에 따라 적절한 위치에 저장
+        @SuppressWarnings("unchecked")
+        Map<String, String> scene = (Map<String, String>) rdpData.get("scene");
+        @SuppressWarnings("unchecked")
+        Map<String, String> highlight = (Map<String, String>) rdpData.get("highlight");
+        @SuppressWarnings("unchecked")
+        Map<String, String> meaning = (Map<String, String>) rdpData.get("meaning");
+        
+        // rule_step=1 (장면)
+        if ("where".equals(facetKey)) scene.put("where", facetValue);
+        else if ("who".equals(facetKey)) scene.put("who", facetValue);
+        else if ("when".equals(facetKey)) scene.put("when", facetValue);
+        else if ("activity".equals(facetKey)) scene.put("activity", facetValue);
+        // rule_step=2 (하이라이트)
+        else if ("moment".equals(facetKey)) highlight.put("moment", facetValue);
+        else if ("quote".equals(facetKey)) highlight.put("quote", facetValue);
+        else if ("object_sense".equals(facetKey)) highlight.put("object_sense", facetValue);
+        else if ("action_expr".equals(facetKey)) highlight.put("action_expr", facetValue);
+        // rule_step=3 (의미)
+        else if ("feeling".equals(facetKey)) meaning.put("feeling", facetValue);
+        else if ("meaning".equals(facetKey)) meaning.put("meaning", facetValue);
+        else if ("impact".equals(facetKey)) meaning.put("impact", facetValue);
+        
+        // 업데이트된 RDP 저장
+        conversation.setRdpData(rdpData);
+    }
+    
+    /**
+     * RDP 구조 초기화
+     */
+    private Map<String, Object> initializeRdpStructure(Map<String, String> targetAnchor) {
+        Map<String, Object> rdp = new HashMap<>();
+        
+        // anchor
+        if (targetAnchor != null && !targetAnchor.isEmpty()) {
+            rdp.put("anchor", targetAnchor);
+        } else {
+            rdp.put("anchor", Map.of("type", "", "text", ""));
+        }
+        
+        // scene
+        Map<String, String> scene = new HashMap<>();
+        scene.put("where", "");
+        scene.put("who", "");
+        scene.put("when", "");
+        scene.put("activity", "");
+        rdp.put("scene", scene);
+        
+        // highlight
+        Map<String, String> highlight = new HashMap<>();
+        highlight.put("moment", "");
+        highlight.put("quote", "");
+        highlight.put("object_sense", "");
+        highlight.put("action_expr", "");
+        rdp.put("highlight", highlight);
+        
+        // meaning
+        Map<String, String> meaningMap = new HashMap<>();
+        meaningMap.put("feeling", "");
+        meaningMap.put("meaning", "");
+        meaningMap.put("impact", "");
+        rdp.put("meaning", meaningMap);
+        
+        return rdp;
     }
 }

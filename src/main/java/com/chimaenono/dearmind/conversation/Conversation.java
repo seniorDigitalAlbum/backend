@@ -90,6 +90,11 @@ public class Conversation {
     @Schema(description = "대화 앵커 텍스트", example = "작은 집")
     private String targetAnchorText;            // "작은 집", "어머니" 등
     
+    @Column(name = "rdp_data", columnDefinition = "JSON")
+    @Schema(description = "RDP (Reminiscence Data Point) 추출 데이터", 
+            example = "{\"anchor\":{\"type\":\"person\",\"text\":\"최정호 선생님\"},\"scene\":{\"where\":\"교실\",\"who\":\"\",\"when\":\"\",\"activity\":\"\"},\"highlight\":{\"moment\":\"상 받고 칭찬\",\"quote\":\"재능은 나누는 거란다\",\"object_sense\":\"\",\"action_expr\":\"\"},\"meaning\":{\"feeling\":\"\",\"meaning\":\"재능은 나눔\",\"impact\":\"\"}}")
+    private String rdpDataJson;                 // RDP 전체 JSON
+    
     public enum ConversationStatus {
         ACTIVE, COMPLETED, PAUSED
     }
@@ -145,6 +150,31 @@ public class Conversation {
         if (anchor != null && !anchor.isEmpty()) {
             this.targetAnchorType = anchor.get("type");
             this.targetAnchorText = anchor.get("text");
+        }
+    }
+    
+    /**
+     * RDP 데이터를 Map으로 반환
+     */
+    public Map<String, Object> getRdpData() {
+        if (rdpDataJson == null || rdpDataJson.trim().isEmpty()) {
+            return new HashMap<>();
+        }
+        try {
+            return objectMapper.readValue(rdpDataJson, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            return new HashMap<>();
+        }
+    }
+    
+    /**
+     * RDP 데이터를 JSON 문자열로 저장
+     */
+    public void setRdpData(Map<String, Object> rdpData) {
+        try {
+            this.rdpDataJson = objectMapper.writeValueAsString(rdpData);
+        } catch (Exception e) {
+            this.rdpDataJson = "{}";
         }
     }
 } 

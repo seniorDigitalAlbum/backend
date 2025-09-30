@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
+import java.util.ArrayList;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 
@@ -143,8 +144,8 @@ public class ConversationController {
             // 대화 메시지 조회
             List<ConversationMessage> messages = conversationService.getMessagesByConversationId(conversationId);
             
-            // 백그라운드에서 요약 및 일기 생성 시작
-            asyncService.generateSummaryAndDiary(conversationId);
+            // 백그라운드에서 RDP 추출 및 일기 생성 시작
+            asyncService.generateRDPAndDiary(conversationId);
             
             // 응답 생성
             ConversationEndResponse response = ConversationEndResponse.success(
@@ -254,7 +255,8 @@ public class ConversationController {
             }
             
             Conversation conversation = conversationOpt.get();
-            Boolean summaryCompleted = conversation.getSummary() != null && !conversation.getSummary().isEmpty();
+            // RDP 기반으로 변경
+            Boolean summaryCompleted = conversation.getRdpData() != null && !conversation.getRdpData().isEmpty();
             Boolean diaryCompleted = conversation.getDiary() != null && !conversation.getDiary().isEmpty();
             
             String message = switch (status) {
@@ -311,8 +313,12 @@ public class ConversationController {
                     diaryPlan = diaryPlanService.buildDiaryPlan(conversationId);
                 }
                 
-                // Summary 파싱 (JSON 문자열에서 객체로 변환)
-                if (conversation.getSummary() != null && objectMapper != null) {
+                // RDP를 Summary로 변환 (호환성을 위해)
+                Map<String, Object> rdpData = conversation.getRdpData();
+                if (!rdpData.isEmpty()) {
+                    summary = convertRdpToSummary(rdpData);
+                } else if (conversation.getSummary() != null && objectMapper != null) {
+                    // 기존 summary가 있으면 사용 (하위 호환성)
                     summary = objectMapper.readValue(conversation.getSummary(), com.chimaenono.dearmind.diary.Summary.class);
                 }
             } catch (Exception e) {
@@ -391,5 +397,50 @@ public class ConversationController {
         
         defaultSummary.setQuotes(List.of());
         return defaultSummary;
+    }
+    
+    /**
+     * RDP 데이터를 Summary 형식으로 변환합니다 (호환성 유지)
+     */
+    @SuppressWarnings("unchecked")
+    private com.chimaenono.dearmind.diary.Summary convertRdpToSummary(Map<String, Object> rdpData) {
+        com.chimaenono.dearmind.diary.Summary summary = new com.chimaenono.dearmind.diary.Summary();
+        
+        // RDP에서 데이터 추출
+        Map<String, String> anchor = (Map<String, String>) rdpData.getOrDefault("anchor", Map.of());
+        Map<String, String> scene = (Map<String, String>) rdpData.getOrDefault("scene", Map.of());
+        Map<String, String> highlight = (Map<String, String>) rdpData.getOrDefault("highlight", Map.of());
+        Map<String, String> meaning = (Map<String, String>) rdpData.getOrDefault("meaning", Map.of());
+        
+        // situation 생성
+        String anchorText = anchor.getOrDefault("text", "");
+        summary.setSituation(anchorText.isEmpty() ? "대화 내용" : anchorText + "에 대한 대화");
+        
+        // events (간단히 구성)
+        List<String> events = new ArrayList<>();
+        if (!scene.getOrDefault("where", "").isEmpty()) events.add(scene.get("where") + "에서의 추억");
+        if (!highlight.getOrDefault("moment", "").isEmpty()) events.add(highlight.get("moment"));
+        summary.setEvents(events);
+        
+        // anchors
+        com.chimaenono.dearmind.diary.Summary.Anchors anchors = new com.chimaenono.dearmind.diary.Summary.Anchors();
+        anchors.setPeople(scene.getOrDefault("who", "").isEmpty() ? List.of() : List.of(scene.get("who")));
+        anchors.setPlace(scene.getOrDefault("where", "").isEmpty() ? List.of() : List.of(scene.get("where")));
+        anchors.setEra(scene.getOrDefault("when", "1980년대"));
+        anchors.setObjects(List.of());
+        summary.setAnchors(anchors);
+        
+        // highlights
+        com.chimaenono.dearmind.diary.Summary.Highlights highlights = new com.chimaenono.dearmind.diary.Summary.Highlights();
+        highlights.setBestMoment(highlight.getOrDefault("moment", ""));
+        highlights.setHardMoment("");
+        highlights.setInsight(meaning.getOrDefault("meaning", ""));
+        summary.setHighlights(highlights);
+        
+        // quotes
+        String quote = highlight.getOrDefault("quote", "");
+        summary.setQuotes(quote.isEmpty() ? List.of() : List.of(quote));
+        
+        return summary;
     }
 } 

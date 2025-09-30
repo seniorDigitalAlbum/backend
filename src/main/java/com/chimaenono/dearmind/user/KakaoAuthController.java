@@ -32,6 +32,9 @@ public class KakaoAuthController {
 
     @Value("${security.oauth2.client.registration.kakao.redirect-uri}")
     private String webRedirectUri;
+    
+    @Value("${kakao.backend_callback_url:}")
+    private String prodCallbackUrl;
 
     /**
      * [웹/모바일 공용] 카카오 로그인 URL 생성 (State 방식)
@@ -86,9 +89,23 @@ public class KakaoAuthController {
         }
         String state = Base64.getUrlEncoder().encodeToString(stateData.getBytes(StandardCharsets.UTF_8));
 
+        // 웹/모바일 구분하여 redirect_uri 설정
+        String redirectUri;
+        if (detectedMobile) {
+            // 모바일: 항상 webRedirectUri 사용
+            redirectUri = webRedirectUri;
+        } else {
+            // 웹: 로컬 개발에서는 localhost, 프로덕션에서는 설정된 URL 사용
+            if (prodCallbackUrl != null && !prodCallbackUrl.isEmpty() && !prodCallbackUrl.contains("localhost")) {
+                redirectUri = prodCallbackUrl;
+            } else {
+                redirectUri = "http://localhost:8080/api/auth/kakao/callback";
+            }
+        }
+        
         String kakaoLoginUrl = "https://kauth.kakao.com/oauth/authorize?" +
                 "client_id=" + clientId + "&" +
-                "redirect_uri=" + webRedirectUri + "&" +
+                "redirect_uri=" + redirectUri + "&" +
                 "response_type=code&" +
                 "state=" + state + "&" + // state 파라미터 추가
                 "scope=name,profile_nickname,profile_image,gender,phone_number";
@@ -177,6 +194,10 @@ public class KakaoAuthController {
     @Operation(summary = "code로 JWT 토큰 교환", description = "카카오 로그인 code를 JWT 토큰으로 교환합니다.")
     public ResponseEntity<Map<String, String>> exchangeToken(@RequestParam("code") String code) {
         try {
+            // 웹용 토큰 교환: 프로덕션 콜백 URL이 있으면 사용, 없으면 로컬 개발용 localhost 사용
+            String webRedirectUri = (prodCallbackUrl != null && !prodCallbackUrl.isEmpty() && !prodCallbackUrl.contains("localhost")) 
+                ? prodCallbackUrl 
+                : "http://localhost:8080/api/auth/kakao/callback";
             User user = kakaoAuthService.processKakaoLogin(code, webRedirectUri);
             String token = jwtConfig.generateToken(user.getId(), user.getKakaoId(), user.getNickname());
             

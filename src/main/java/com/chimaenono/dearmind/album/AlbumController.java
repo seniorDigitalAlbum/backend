@@ -8,6 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.chimaenono.dearmind.s3.S3UploadService;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.util.HashMap;

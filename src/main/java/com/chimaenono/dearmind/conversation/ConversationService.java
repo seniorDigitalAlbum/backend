@@ -106,6 +106,13 @@ public class ConversationService {
         return conversationRepository.findById(conversationId);
     }
     
+    /**
+     * Conversation 저장 (facetHistory, targetAnchor 업데이트용)
+     */
+    public void saveConversation(Conversation conversation) {
+        conversationRepository.save(conversation);
+    }
+    
     @Operation(summary = "사용자별 대화 세션 조회", description = "사용자의 모든 대화 세션을 최신순으로 조회합니다")
     public List<Conversation> getConversationsByUser(Long userId) {
         return conversationRepository.findByUserIdOrderByCreatedAtDesc(userId);

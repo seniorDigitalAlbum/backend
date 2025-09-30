@@ -5,8 +5,14 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Entity
 @Table(name = "conversations")
@@ -72,11 +78,73 @@ public class Conversation {
     @Schema(description = "앨범 공개 여부", example = "false")
     private Boolean isPublic = false;           // 기본값은 비공개
     
+    @Column(name = "facet_history", columnDefinition = "JSON")
+    @Schema(description = "대화 세부키 히스토리 (JSON 배열)", example = "[\"where\", \"who\", \"when\"]")
+    private String facetHistoryJson;            // JSON 배열: ["where", "who", ...]
+    
+    @Column(name = "target_anchor_type")
+    @Schema(description = "대화 앵커 타입", example = "place")
+    private String targetAnchorType;            // person, place, event, timepoint, object, activity, quote, lesson
+    
+    @Column(name = "target_anchor_text")
+    @Schema(description = "대화 앵커 텍스트", example = "작은 집")
+    private String targetAnchorText;            // "작은 집", "어머니" 등
+    
     public enum ConversationStatus {
         ACTIVE, COMPLETED, PAUSED
     }
     
     public enum ProcessingStatus {
         READY, PROCESSING, COMPLETED, ERROR
+    }
+    
+    // JSON 변환을 위한 ObjectMapper (static)
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+    
+    /**
+     * facetHistory를 List<String>으로 반환
+     */
+    public List<String> getFacetHistory() {
+        if (facetHistoryJson == null || facetHistoryJson.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        try {
+            return objectMapper.readValue(facetHistoryJson, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * facetHistory를 JSON 문자열로 저장
+     */
+    public void setFacetHistory(List<String> facetHistory) {
+        try {
+            this.facetHistoryJson = objectMapper.writeValueAsString(facetHistory);
+        } catch (Exception e) {
+            this.facetHistoryJson = "[]";
+        }
+    }
+    
+    /**
+     * targetAnchor를 Map<String, String>으로 반환
+     */
+    public Map<String, String> getTargetAnchor() {
+        Map<String, String> anchor = new HashMap<>();
+        if (targetAnchorType != null && targetAnchorText != null) {
+            anchor.put("type", targetAnchorType);
+            anchor.put("text", targetAnchorText);
+        }
+        return anchor;
+    }
+    
+    /**
+     * targetAnchor를 개별 필드로 저장
+     */
+    public void setTargetAnchor(Map<String, String> anchor) {
+        if (anchor != null && !anchor.isEmpty()) {
+            this.targetAnchorType = anchor.get("type");
+            this.targetAnchorText = anchor.get("text");
+        }
     }
 } 
